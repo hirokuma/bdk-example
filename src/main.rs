@@ -6,18 +6,20 @@ const DB_PATH: &str = "./test_wallet.db";
 const STOP_GAP: usize = 20;
 const PARALLEL_REQUESTS: usize = 10;
 
-
 fn main() {
-    let descriptor: &str = "tr([12071a7c/86'/1'/0']tpubDCaLkqfh67Qr7ZuRrUNrCYQ54sMjHfsJ4yQSGb3aBr1yqt3yXpamRBUwnGSnyNnxQYu7rqeBiPfw3mjBcFNX4ky2vhjj9bDrGstkfUbLB9T/0/*)#z3x5097m";
-    let change_descriptor: &str = "tr([12071a7c/86'/1'/0']tpubDCaLkqfh67Qr7ZuRrUNrCYQ54sMjHfsJ4yQSGb3aBr1yqt3yXpamRBUwnGSnyNnxQYu7rqeBiPfw3mjBcFNX4ky2vhjj9bDrGstkfUbLB9T/1/*)#n9r4jswr";
+    let tpub = "[12071a7c/86'/1'/0']tpubDCaLkqfh67Qr7ZuRrUNrCYQ54sMjHfsJ4yQSGb3aBr1yqt3yXpamRBUwnGSnyNnxQYu7rqeBiPfw3mjBcFNX4ky2vhjj9bDrGstkfUbLB9T";
+    let descriptor = format!("tr({}/0/*)#z3x5097m", tpub);
+    let change_descriptor = format!("tr({}/1/*)#n9r4jswr", tpub);
 
     // Initiate the connection to the database
     let mut conn = Connection::open(DB_PATH).expect("Can't open database");
 
     // Create the wallet
+    let external_descriptor = Some(descriptor.clone());
+    let internal_descriptor = Some(change_descriptor.clone());
     let wallet_opt = Wallet::load()
-        .descriptor(KeychainKind::External, Some(descriptor))
-        .descriptor(KeychainKind::Internal, Some(change_descriptor))
+        .descriptor(KeychainKind::External, external_descriptor)
+        .descriptor(KeychainKind::Internal, internal_descriptor)
         // .extract_keys() // uncomment this line when using private descriptors
         .check_network(Network::Signet)
         .load_wallet(&mut conn)
@@ -26,7 +28,7 @@ fn main() {
     let mut wallet = if let Some(loaded_wallet) = wallet_opt {
         loaded_wallet
     } else {
-        Wallet::create(descriptor, change_descriptor)
+        Wallet::create(descriptor.clone(), change_descriptor.clone())
             .network(Network::Signet)
             .create_wallet(&mut conn)
             .unwrap()
