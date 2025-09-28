@@ -74,9 +74,9 @@ mod tests {
     fn test_descriptor() {
         let mut db = Connection::open_in_memory().expect("Can't open database");
 
-        // Account 0, first receiving address = m/86'/0'/0'/0/0
+        // Account 0, first receiving address = m/86'/0'/0'/0/*
         let xprv1 = "tr(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/86'/0'/0'/0/*)";
-        // Account 0, first change address = m/86'/0'/0'/1/0
+        // Account 0, first change address = m/86'/0'/0'/1/*
         let xprv2 = "tr(xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu/86'/0'/0'/1/*)";
         let wallet_opt = Wallet::load()
             .descriptor(KeychainKind::External, Some(xprv1))
@@ -93,19 +93,29 @@ mod tests {
                 .expect("wallet"),
         };
 
+        // Account 0, first receiving address = m/86'/0'/0'/0/0
         let address: AddressInfo = wallet.peek_address(KeychainKind::External, 0);
-        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address");
+        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address 0");
         println!(
             "Generated external address {} at index {}",
             address.address, address.index
         );
+        // Account 0, first receiving address = m/86'/0'/0'/0/1
+        let address: AddressInfo = wallet.peek_address(KeychainKind::External, 1);
+        assert_eq!(address.to_string(), "bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh", "external address 1");
+        println!(
+            "Generated external address {} at index {}",
+            address.address, address.index
+        );
+        // Account 0, first change address = m/86'/0'/0'/1/0
         let address: AddressInfo = wallet.peek_address(KeychainKind::Internal, 0);
-        assert_eq!(address.to_string(), "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7", "internal address");
+        assert_eq!(address.to_string(), "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7", "internal address 0");
         println!(
             "Generated internal address {} at index {}",
             address.address, address.index
         );
 
+        // Account 0, first receiving address = m/86'/0'/0'/0/0
         let secp = Secp256k1::new();
         let xprv = Xpriv::from_str("xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu").expect("Invalid xprv");
         let derivation_path = DerivationPath::from_str("m/86'/0'/0'/0/0").expect("Invalid path");
@@ -137,7 +147,7 @@ mod tests {
 
         // 4. P2TR address
         let address = Address::p2tr_tweaked(tweaked_xonly, Network::Bitcoin);
-        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address");
+        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address 0");
         println!("P2TR address: {}", address);
     }
 }
