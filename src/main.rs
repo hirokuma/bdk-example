@@ -94,13 +94,13 @@ mod tests {
         };
 
         let address: AddressInfo = wallet.peek_address(KeychainKind::External, 0);
-        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr");
+        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address");
         println!(
             "Generated external address {} at index {}",
             address.address, address.index
         );
         let address: AddressInfo = wallet.peek_address(KeychainKind::Internal, 0);
-        assert_eq!(address.to_string(), "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7");
+        assert_eq!(address.to_string(), "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7", "internal address");
         println!(
             "Generated internal address {} at index {}",
             address.address, address.index
@@ -117,12 +117,12 @@ mod tests {
         // 1. internal public key (untweaked)
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         let xonly_pubkey = XOnlyPublicKey::from(public_key);
-        assert_eq!(xonly_pubkey.to_string(), "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115");
+        assert_eq!(xonly_pubkey.to_string(), "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115", "x-only pubkey");
         println!("Internal x-only pubkey: {}", xonly_pubkey);
 
         // 2. tweaked pubkey
         let (tweaked_xonly, _parity) = xonly_pubkey.tap_tweak(&secp, None);
-        assert_eq!(tweaked_xonly.to_string(), "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c");
+        assert_eq!(tweaked_xonly.to_string(), "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c", "tweaked x-only pubkey");
         println!("Tweaked x-only pubkey: {}", tweaked_xonly);
 
         // 3. scriptPubKey
@@ -132,12 +132,12 @@ mod tests {
         script_bytes.extend_from_slice(&tweaked_xonly.serialize());
         let script_pubkey = Script::from_bytes(&script_bytes);
         let script_pubkey_str = hex::encode(script_pubkey.as_bytes());
-        assert_eq!(script_pubkey_str, "5120a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c");
+        assert_eq!(script_pubkey_str, "5120a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c", "scriptPubKey");
         println!("scriptPubKey (hex): {}", script_pubkey_str);
 
         // 4. P2TR address
         let address = Address::p2tr_tweaked(tweaked_xonly, Network::Bitcoin);
-        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr");
+        assert_eq!(address.to_string(), "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr", "external address");
         println!("P2TR address: {}", address);
     }
 }
