@@ -4,6 +4,7 @@ use bdk_wallet::KeychainKind;
 use bdk_wallet::PersistedWallet;
 use bdk_wallet::rusqlite::Connection;
 use bitcoin::consensus::encode;
+use bitcoin::Transaction;
 use segwit::v1;
 use segwit::wallet;
 
@@ -27,19 +28,23 @@ pub fn cmd_newaddr() -> Result<(), String> {
     Ok(())
 }
 
-pub fn cmd_tx(raw_tx: &String) -> Result<(), String> {
-    println!("{:?}", raw_tx);
-    Err("not implemented".to_string())
+pub fn cmd_tx(tx_hex: &String) -> Result<(), String> {
+    let tx: Transaction = match encode::deserialize_hex(tx_hex) {
+        Ok(tx) => tx,
+        Err(e) => { Err(e.to_string()) }?,
+    };
+    println!("{:#?}", tx);
+    Ok(())
 }
 
 pub fn cmd_spend(
-    raw_tx: &String,
+    tx_hex: &String,
     out_index: u32,
     out_addr: &String,
     amount: u64,
     fee_rate: f64
 ) -> Result<(), String> {
-    println!("{:?}", raw_tx);
+    println!("{:?}", tx_hex);
     println!("out_index: {}", out_index);
     println!("out_addr: {}", out_addr);
     println!("amount: {}", amount);
