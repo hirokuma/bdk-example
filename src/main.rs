@@ -1,7 +1,7 @@
 use std::env;
 use bdk_starter_example as lib;
 
-fn main() -> Result<(), i32> {
+fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() <= 1 || args[1] == "help" {
@@ -17,7 +17,7 @@ fn main() -> Result<(), i32> {
     } else {
         eprintln!("invalid options: {}", args[1]);
         cmd_help(&args[0]);
-        return Err(1);
+        return Err("invalid option".to_string());
     }
     Ok(())
 }

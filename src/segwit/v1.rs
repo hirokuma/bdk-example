@@ -5,6 +5,7 @@ use bitcoin::{hashes::Hash, psbt::Input, Amount, FeeRate, OutPoint, Transaction,
 
 use super::common;
 use common::{ADDRESS_OUT_V1, DUMMY_UTXO_AMOUNT, SPEND_AMOUNT};
+use super::wallet;
 
 fn dummy_unspent_transaction_output(addr: AddressInfo, amount: Amount) -> (OutPoint, Input) {
     let outpoint = OutPoint {
@@ -18,12 +19,11 @@ fn dummy_unspent_transaction_output(addr: AddressInfo, amount: Amount) -> (OutPo
         }),
         ..Default::default()
     };
-    println!("is_p2tr: {}", addr.script_pubkey().is_p2tr());
     (outpoint, dummy_input)
 }
 
 pub fn segwit_v1() -> Result<Transaction> {
-    let mut wallet = common::create_wallet();
+    let mut wallet = wallet::create_wallet()?;
     let recv_addr = common::receivers_address(ADDRESS_OUT_V1);
     let prev_addr = wallet.next_unused_address(KeychainKind::External);
     let dummy_out_point = dummy_unspent_transaction_output(prev_addr, DUMMY_UTXO_AMOUNT);
