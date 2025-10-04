@@ -1,40 +1,31 @@
 use anyhow::Result;
 
-use bdk_wallet::{AddressInfo, KeychainKind, SignOptions};
-use bitcoin::{hashes::Hash, psbt::Input, Amount, FeeRate, OutPoint, Transaction, Txid};
+use bdk_wallet::{rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions};
+use bitcoin::{psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction};
 
-use super::common;
-use common::{ADDRESS_OUT_V1, DUMMY_UTXO_AMOUNT, SPEND_AMOUNT};
-use super::wallet;
-
-fn dummy_unspent_transaction_output(addr: AddressInfo, amount: Amount) -> (OutPoint, Input) {
-    let outpoint = OutPoint {
-        txid: Txid::all_zeros(),
-        vout: 0,
+pub fn segwit_v1(
+    wallet: &mut PersistedWallet<Connection>, 
+    prev_tx: Transaction,
+    prev_index: u32,
+    pay_addr: Address,
+    pay_amount: Amount,
+    fee_rate: FeeRate,
+) -> Result<Transaction> {
+    let prev_outpoint = OutPoint {
+        txid: prev_tx.compute_txid(),
+        vout: prev_index,
     };
-    let dummy_input = Input {
-        witness_utxo: Some(bitcoin::TxOut {
-            value: amount,
-            script_pubkey: addr.script_pubkey(),
-        }),
-        ..Default::default()
+    let txout = prev_tx.tx_out(prev_index as usize).unwrap();
+    let input = Input {  
+        witness_utxo: Some(txout.clone()),  
+        ..Default::default()  
     };
-    (outpoint, dummy_input)
-}
-
-pub fn segwit_v1() -> Result<Transaction> {
-    let mut wallet = wallet::create_wallet()?;
-    let recv_addr = common::receivers_address(ADDRESS_OUT_V1);
-    let prev_addr = wallet.next_unused_address(KeychainKind::External);
-    let dummy_out_point = dummy_unspent_transaction_output(prev_addr, DUMMY_UTXO_AMOUNT);
     let weight = wallet.public_descriptor(KeychainKind::External).max_weight_to_satisfy()?;
-
     let mut psbt = {
         let mut builder = wallet.build_tx();
-        builder.add_foreign_utxo(dummy_out_point.0, dummy_out_point.1, weight)?;
-        builder.add_recipient(recv_addr.script_pubkey(), SPEND_AMOUNT);
-        // builder.fee_absolute(DUMMY_UTXO_AMOUNT- (SPEND_AMOUNT + CHANGE_AMOUNT));
-        builder.fee_rate(FeeRate::from_sat_per_vb_unchecked(1));
+        builder.add_foreign_utxo(prev_outpoint, input, weight)?;
+        builder.add_recipient(pay_addr.script_pubkey(), pay_amount);
+        builder.fee_rate(fee_rate);
         builder.finish()?
     };
     wallet.sign(&mut psbt, SignOptions::default())?;

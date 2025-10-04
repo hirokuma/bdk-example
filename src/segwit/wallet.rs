@@ -1,6 +1,5 @@
 use anyhow::Result;
-use bdk_wallet::PersistedWallet;
-use bdk_wallet::{KeychainKind, Wallet, rusqlite::Connection};
+use bdk_wallet::{KeychainKind, PersistedWallet, Wallet, rusqlite::Connection};
 use bitcoin::Network;
 
 const WALLET_XPRV_BASE: &str = "xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu";

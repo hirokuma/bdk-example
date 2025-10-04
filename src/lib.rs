@@ -1,12 +1,10 @@
 pub mod segwit;
 
-use bdk_wallet::KeychainKind;
-use bdk_wallet::PersistedWallet;
-use bdk_wallet::rusqlite::Connection;
-use bitcoin::consensus::encode;
-use bitcoin::Transaction;
-use segwit::v1;
-use segwit::wallet;
+use std::str::FromStr;
+
+use bdk_wallet::{KeychainKind, PersistedWallet, rusqlite::Connection};
+use bitcoin::{consensus::encode, Address, Amount, FeeRate, Network, Transaction};
+use segwit::{v1, wallet};
 
 pub fn cmd_addresses() -> Result<(), String> {
     let wallet = init()?;
@@ -38,29 +36,44 @@ pub fn cmd_tx(tx_hex: &String) -> Result<(), String> {
 }
 
 pub fn cmd_spend(
-    tx_hex: &String,
-    out_index: u32,
+    prev_tx_hex: &String,
+    prev_index: u32,
     out_addr: &String,
     amount: u64,
     fee_rate: f64
 ) -> Result<(), String> {
-    println!("{:?}", tx_hex);
-    println!("out_index: {}", out_index);
+    let prev_tx: Transaction = match encode::deserialize_hex(prev_tx_hex) {
+        Ok(tx) => tx,
+        Err(e) => { Err(e.to_string()) }?,
+    };
+    let out_addr = receivers_address(out_addr);
+    let out_amount = Amount::from_sat(amount);
+    let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 4.0) as u64);
+
+    println!("out_index: {}", prev_index);
     println!("out_addr: {}", out_addr);
     println!("amount: {}", amount);
     println!("fee_rate: {}", fee_rate);
 
-    let tx = v1::segwit_v1().unwrap_or_else(|e| {
-        eprintln!("Error creating segwit v1 transaction: {}", e);
-        std::process::exit(1);
-    });
+    let mut wallet = init()?;
+    let tx = match v1::segwit_v1(
+        &mut wallet, 
+        prev_tx, 
+        prev_index,
+        out_addr,
+        out_amount,
+        fee_rate,
+    ) {
+        Ok(tx) => tx,
+        Err(e) => { Err(e.to_string()) }?,
+    };
 
     let s: Vec<u8> = encode::serialize(&tx);
     let hex_str = s.iter().map(|b| format!("{:02x}", b)).collect::<String>();
     println!("{}", hex_str);
     println!("{:#?}", tx);
     println!("vsize: {}", tx.vsize());
-    Err("not implemented".to_string())
+    Ok(())
 }
 
 fn init() -> Result<PersistedWallet<Connection>, String> {
@@ -71,4 +84,11 @@ fn init() -> Result<PersistedWallet<Connection>, String> {
             Err(e.to_string())
         }
     }
+}
+
+fn receivers_address(addr: &str) -> Address {
+    Address::from_str(addr)
+        .expect("a valid address")
+        .require_network(Network::Bitcoin)
+        .expect("valid address for mainnet")
 }
