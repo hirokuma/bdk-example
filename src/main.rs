@@ -11,9 +11,14 @@ fn main() -> Result<(), String> {
     } else if args[1] == "newaddr" {
         lib::cmd_newaddr()?
     } else if args[1] == "tx" {
-        lib::cmd_tx(&args[2..])?
-    } else if args[1] == "spend" {
-        lib::cmd_spend(&args[2..])?
+        lib::cmd_tx(&args[2])?
+    } else if args[1] == "spend" && args.len() == 7 {
+        let raw_tx = &args[2];
+        let out_index: u32 = args[3].parse().map_err(|e| format!("Invalid out_index: {}", e))?;
+        let out_addr = &args[4];
+        let amount: u64 = args[5].parse().map_err(|e| format!("Invalid amount: {}", e))?;
+        let fee_rate: f64 = args[6].parse().map_err(|e| format!("Invalid fee_rate: {}", e))?;
+        lib::cmd_spend(raw_tx, out_index, out_addr, amount, fee_rate)?
     } else {
         eprintln!("invalid options: {}", args[1]);
         cmd_help(&args[0]);

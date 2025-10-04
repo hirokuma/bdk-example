@@ -27,13 +27,23 @@ pub fn cmd_newaddr() -> Result<(), String> {
     Ok(())
 }
 
-pub fn cmd_tx(args: &[String]) -> Result<(), String> {
-    println!("{:?}", args);
+pub fn cmd_tx(raw_tx: &String) -> Result<(), String> {
+    println!("{:?}", raw_tx);
     Err("not implemented".to_string())
 }
 
-pub fn cmd_spend(args: &[String]) -> Result<(), String> {
-    println!("{:?}", args);
+pub fn cmd_spend(
+    raw_tx: &String,
+    out_index: u32,
+    out_addr: &String,
+    amount: u64,
+    fee_rate: f64
+) -> Result<(), String> {
+    println!("{:?}", raw_tx);
+    println!("out_index: {}", out_index);
+    println!("out_addr: {}", out_addr);
+    println!("amount: {}", amount);
+    println!("fee_rate: {}", fee_rate);
 
     let tx = v1::segwit_v1().unwrap_or_else(|e| {
         eprintln!("Error creating segwit v1 transaction: {}", e);
