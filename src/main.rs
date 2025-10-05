@@ -34,6 +34,6 @@ fn cmd_help(cmd: &String) {
     println!("  newaddr           Get new address.");
     println!("  tx <hex_string>   Decode transaction hex string.");
     println!("  spend <input_hex> <out_index> <output_address> <amount_sats> <feerate>");
-    println!("                    Decode transaction hex string.");
+    println!("                    Create a spendable transaction.");
     println!("  help              Show this help message and exit.");
 }
