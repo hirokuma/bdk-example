@@ -3,7 +3,7 @@ pub mod segwit;
 use std::str::FromStr;
 
 use bdk_wallet::{KeychainKind, PersistedWallet, rusqlite::Connection};
-use bitcoin::{consensus::encode, Address, Amount, FeeRate, Network, Transaction};
+use bitcoin::{consensus::encode, Address, Amount, FeeRate, Transaction};
 use segwit::{v1, wallet};
 
 pub fn cmd_addresses() -> Result<(), String> {
@@ -89,6 +89,6 @@ fn init() -> Result<PersistedWallet<Connection>, String> {
 fn receivers_address(addr: &str) -> Address {
     Address::from_str(addr)
         .expect("a valid address")
-        .require_network(Network::Bitcoin)
+        .require_network(wallet::WALLET_NETWORK)
         .expect("valid address for mainnet")
 }

@@ -1,28 +1,43 @@
 use anyhow::Result;
-use bdk_wallet::{KeychainKind, PersistedWallet, Wallet, rusqlite::Connection};
-use bitcoin::Network;
+use bdk_wallet::{
+    PersistedWallet, Wallet,
+    bitcoin::{Network, bip32},
+    keys::{GeneratableKey, GeneratedKey},
+    rusqlite::Connection,
+};
 
-const WALLET_XPRV_BASE: &str = "xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu";
-const WALLET_EXTR_PATH: &str = "86'/0'/0'/0/*";
-const WALLET_INTR_PATH: &str = "86'/0'/0'/1/*";
+const FILENAME: &str = "./wallet.db";
+
+// m / purpose' / coin_type' / account' / change / address_index
+// purpose = 44(P2PKH), 49(P2WPKH-nested-in-BIP16), 84(P2WPKH), 86(P2TR)
+// coin_type = 0(mainnet), 1(testnet)
+const WALLET_COIN_TYPE: u32 = 1;
+const WALLET_EXTR_PATH: &str = "86'/1'/0'/0/*";
+const WALLET_INTR_PATH: &str = "86'/1'/0'/1/*";
+
+pub const WALLET_NETWORK: Network = Network::Regtest;
 
 pub fn create_wallet() -> Result<PersistedWallet<Connection>> {
-    let mut db = Connection::open_in_memory().expect("Can't open database");
+    let mut db = Connection::open(FILENAME).expect("Can't open database");
 
-    let xprv_extn = format!("tr({}/{})", WALLET_XPRV_BASE, WALLET_EXTR_PATH);
-    let xprv_intr = format!("tr({}/{})", WALLET_XPRV_BASE, WALLET_INTR_PATH);
     let wallet_opt = Wallet::load()
-        .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
-        .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
         .extract_keys()
-        .check_network(Network::Bitcoin)
+        .check_network(WALLET_NETWORK)
         .load_wallet(&mut db)?;
     match wallet_opt {
         Some(wallet) => Ok(wallet),
         None => {
+            let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
+            let mut xprv = xprv.into_key();
+            if WALLET_COIN_TYPE == 1 {
+                xprv.network = WALLET_NETWORK.into();
+            }
+            println!("xprv = {:#?}", xprv.to_string());
+            let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
+            let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
             let wallet = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
-            .network(Network::Bitcoin)
-            .create_wallet(&mut db)?;
+                .network(WALLET_NETWORK)
+                .create_wallet(&mut db)?;
             Ok(wallet)
         }
     }
@@ -32,11 +47,11 @@ pub fn create_wallet() -> Result<PersistedWallet<Connection>> {
 mod tests {
     use std::str::FromStr;
 
-    use bdk_wallet::AddressInfo;
+    use bdk_wallet::{AddressInfo, KeychainKind};
     use bitcoin::bip32::{DerivationPath, Xpriv};
     use bitcoin::key::{TapTweak, XOnlyPublicKey};
     use bitcoin::secp256k1::{PublicKey, Secp256k1};
-    use bitcoin::{Address, Network, Script};
+    use bitcoin::{Address, Script};
 
     use super::*;
 
@@ -44,6 +59,7 @@ mod tests {
     // BIP-86 Test Vectors
     // https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki#test-vectors
     fn test_descriptor() {
+        const WALLET_NETWORK: Network = Network::Bitcoin;
         let mut db = Connection::open_in_memory().expect("Can't open database");
 
         // Account 0, first receiving address = m/86'/0'/0'/0/0
@@ -54,13 +70,13 @@ mod tests {
             .descriptor(KeychainKind::External, Some(xprv1))
             .descriptor(KeychainKind::Internal, Some(xprv2))
             .extract_keys()
-            .check_network(Network::Bitcoin)
+            .check_network(WALLET_NETWORK)
             .load_wallet(&mut db)
             .expect("wallet");
         let wallet = match wallet_opt {
             Some(wallet) => wallet,
             None => Wallet::create(xprv1, xprv2)
-                .network(Network::Bitcoin)
+                .network(WALLET_NETWORK)
                 .create_wallet(&mut db)
                 .expect("wallet"),
         };
@@ -128,7 +144,7 @@ mod tests {
         println!("scriptPubKey (hex): {}", script_pubkey_str);
 
         // 4. P2TR address
-        let address = Address::p2tr_tweaked(tweaked_xonly, Network::Bitcoin);
+        let address = Address::p2tr_tweaked(tweaked_xonly, WALLET_NETWORK);
         assert_eq!(
             address.to_string(),
             "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",

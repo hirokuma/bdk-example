@@ -104,6 +104,7 @@ dependencies = [
  "bdk_wallet",
  "bitcoin",
  "hex",
+ "miniscript",
  "secp256k1 0.31.1",
 ]
 
