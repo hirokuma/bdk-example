@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "spend test",
+            "program": "${workspaceFolder}/target/debug/bdk-starter-example",
+            "args": ["spend", "02000000000101a63c56f76e2a58ffe961fb491b84b4371ccbb6b013d405f519a29cb450fd31070100000000fdffffff0220890e24010000002251205591410cc6a8dd622d973ceae2d4333bdf3c5000f70340f8acdbeaac17e93d22a0860100000000002251202d19203f478c89a10ea00d1cb02e51c093c27372796d5af1f7bdf091b30a1d3b01405b5214359e2bb86fabe9f3a830c6a6641b675787749cbb0ec8c1b6f03b7ba4f9f7e38bccbc879a90abaf32a0d81ba10eb5d01dd12a73b2272dc7045ac36637fe6b000000", "1", "bcrt1qtu7x8w87ddntdqtjpuffpvcarnyzw99pj4hpeh", "50000", "1"],
+            "cwd": "${workspaceFolder}",
+            "preRunCommands": [],
+            "terminal": "integrated",
+            "sourceMap": {"/mnt/wsl/home2/ueno/Bitcoin/rust/bdk-example": "/home/ueno/Bitcoin/rust/bdk-example"}
+        }
+    ]
+}

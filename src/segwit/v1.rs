@@ -28,6 +28,9 @@ pub fn segwit_v1(
         builder.fee_rate(fee_rate);
         builder.finish()?
     };
-    wallet.sign(&mut psbt, SignOptions::default())?;
+    let b = wallet.sign(&mut psbt, SignOptions::default())?;
+    if !b {
+        return Err(anyhow::Error::msg("sign error"));
+    }
     Ok(psbt.extract_tx()?)
 }

@@ -20,7 +20,7 @@ fn main() -> Result<(), String> {
         let fee_rate: f64 = args[6].parse().map_err(|e| format!("Invalid fee_rate: {}", e))?;
         lib::cmd_spend(raw_tx, out_index, out_addr, amount, fee_rate)?
     } else {
-        eprintln!("invalid options: {}", args[1]);
+        eprintln!("invalid options: {:?}", args);
         cmd_help(&args[0]);
         return Err("invalid option".to_string());
     }

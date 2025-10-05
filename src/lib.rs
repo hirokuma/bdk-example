@@ -12,7 +12,6 @@ pub fn cmd_addresses() -> Result<(), String> {
         Some(index) => index,
         None => Err("derivation not found")?,
     };
-    println!("index = {}", index);
     for i in 0..=index {
         let addr = wallet.wallet.peek_address(KeychainKind::External, i);
         println!("{}: {}", i, addr);
@@ -50,12 +49,7 @@ pub fn cmd_spend(
     };
     let out_addr = receivers_address(out_addr);
     let out_amount = Amount::from_sat(amount);
-    let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 4.0) as u64);
-
-    println!("out_index: {}", prev_index);
-    println!("out_addr: {}", out_addr);
-    println!("amount: {}", amount);
-    println!("fee_rate: {}", fee_rate);
+    let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
 
     let mut wallet = init()?;
     let tx = match v1::segwit_v1(
