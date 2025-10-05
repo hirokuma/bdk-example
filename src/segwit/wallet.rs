@@ -11,35 +11,46 @@ const FILENAME: &str = "./wallet.db";
 // m / purpose' / coin_type' / account' / change / address_index
 // purpose = 44(P2PKH), 49(P2WPKH-nested-in-BIP16), 84(P2WPKH), 86(P2TR)
 // coin_type = 0(mainnet), 1(testnet)
-const WALLET_COIN_TYPE: u32 = 1;
 const WALLET_EXTR_PATH: &str = "86'/1'/0'/0/*";
 const WALLET_INTR_PATH: &str = "86'/1'/0'/1/*";
 
-pub const WALLET_NETWORK: Network = Network::Regtest;
+pub struct MyWallet {
+    pub wallet: PersistedWallet<Connection>,
+    conn: Connection,
+}
 
-pub fn create_wallet() -> Result<PersistedWallet<Connection>> {
-    let mut db = Connection::open(FILENAME).expect("Can't open database");
+impl MyWallet {
+    pub const WALLET_NETWORK: Network = Network::Regtest;
 
-    let wallet_opt = Wallet::load()
-        .extract_keys()
-        .check_network(WALLET_NETWORK)
-        .load_wallet(&mut db)?;
-    match wallet_opt {
-        Some(wallet) => Ok(wallet),
-        None => {
-            let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
-            let mut xprv = xprv.into_key();
-            if WALLET_COIN_TYPE == 1 {
-                xprv.network = WALLET_NETWORK.into();
+    pub fn create_wallet() -> Result<Self> {
+        let mut conn = Connection::open(FILENAME).expect("Can't open database");
+
+        let wallet_opt = Wallet::load()
+            .extract_keys()
+            .check_network(Self::WALLET_NETWORK)
+            .load_wallet(&mut conn)?;
+        let wallet = match wallet_opt {
+            Some(wallet) => wallet,
+            None => {
+                let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
+                let mut xprv = xprv.into_key();
+                xprv.network = Self::WALLET_NETWORK.into();
+                println!("xprv = {:#?}", xprv.to_string());
+                let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
+                let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
+                Wallet::create(xprv_extn.clone(), xprv_intr.clone())
+                    .network(Self::WALLET_NETWORK)
+                    .create_wallet(&mut conn)?
             }
-            println!("xprv = {:#?}", xprv.to_string());
-            let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
-            let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
-            let wallet = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
-                .network(WALLET_NETWORK)
-                .create_wallet(&mut db)?;
-            Ok(wallet)
-        }
+        };
+        Ok(MyWallet {
+            wallet,
+            conn,
+        })
+    }
+
+    pub fn persist(&mut self) {
+        let _ = self.wallet.persist(&mut self.conn);
     }
 }
 

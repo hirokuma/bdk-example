@@ -2,18 +2,19 @@ pub mod segwit;
 
 use std::str::FromStr;
 
-use bdk_wallet::{KeychainKind, PersistedWallet, rusqlite::Connection};
+use bdk_wallet::{KeychainKind};
 use bitcoin::{consensus::encode, Address, Amount, FeeRate, Transaction};
-use segwit::{v1, wallet};
+use segwit::{v1, wallet::MyWallet};
 
 pub fn cmd_addresses() -> Result<(), String> {
     let wallet = init()?;
-    let index = match wallet.derivation_index(KeychainKind::External) {
+    let index = match wallet.wallet.derivation_index(KeychainKind::External) {
         Some(index) => index,
         None => Err("derivation not found")?,
     };
-    for i in 0..index {
-        let addr = wallet.peek_address(KeychainKind::External, i);
+    println!("index = {}", index);
+    for i in 0..=index {
+        let addr = wallet.wallet.peek_address(KeychainKind::External, i);
         println!("{}: {}", i, addr);
     }
     Ok(())
@@ -21,7 +22,8 @@ pub fn cmd_addresses() -> Result<(), String> {
 
 pub fn cmd_newaddr() -> Result<(), String> {
     let mut wallet = init()?;
-    let addr = wallet.next_unused_address(KeychainKind::External);
+    let addr = wallet.wallet.next_unused_address(KeychainKind::External);
+    wallet.persist();
     println!("address: {}", addr);
     Ok(())
 }
@@ -57,7 +59,7 @@ pub fn cmd_spend(
 
     let mut wallet = init()?;
     let tx = match v1::segwit_v1(
-        &mut wallet, 
+        &mut wallet.wallet, 
         prev_tx, 
         prev_index,
         out_addr,
@@ -76,8 +78,8 @@ pub fn cmd_spend(
     Ok(())
 }
 
-fn init() -> Result<PersistedWallet<Connection>, String> {
-    match wallet::create_wallet() {
+fn init() -> Result<MyWallet, String> {
+    match MyWallet::create_wallet() {
         Ok(wallet) => Ok(wallet),
         Err(e) => {
             eprintln!("Error init: {}", e);
@@ -89,6 +91,6 @@ fn init() -> Result<PersistedWallet<Connection>, String> {
 fn receivers_address(addr: &str) -> Address {
     Address::from_str(addr)
         .expect("a valid address")
-        .require_network(wallet::WALLET_NETWORK)
+        .require_network(MyWallet::WALLET_NETWORK)
         .expect("valid address for mainnet")
 }
