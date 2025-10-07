@@ -15,20 +15,26 @@ pub fn segwit_v1(
         txid: prev_tx.compute_txid(),
         vout: prev_index,
     };
-    let txout = prev_tx.tx_out(prev_index as usize).unwrap();
-    let input = Input {  
-        witness_utxo: Some(txout.clone()),  
-        ..Default::default()  
+    let input = Input {
+        witness_utxo: Some(prev_tx.tx_out(prev_index as usize).unwrap().clone()),
+        ..Default::default()
     };
     let weight = wallet.public_descriptor(KeychainKind::External).max_weight_to_satisfy()?;
     let mut psbt = {
         let mut builder = wallet.build_tx();
+        builder.only_witness_utxo();
         builder.add_foreign_utxo(prev_outpoint, input, weight)?;
         builder.add_recipient(pay_addr.script_pubkey(), pay_amount);
         builder.fee_rate(fee_rate);
         builder.finish()?
     };
-    let b = wallet.sign(&mut psbt, SignOptions::default())?;
+    let b = wallet.sign(
+        &mut psbt, 
+        SignOptions {
+            trust_witness_utxo: true,
+            ..Default::default()
+        },
+    )?;
     if !b {
         return Err(anyhow::Error::msg("sign error"));
     }
