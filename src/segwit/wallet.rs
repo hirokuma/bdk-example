@@ -1,6 +1,16 @@
+use std::{fs::File, path::Path};
+use std::io::prelude::*;
+
 use anyhow::Result;
 use bdk_wallet::{
-    bitcoin::{bip32::{self, Xpub}, secp256k1::Secp256k1, Network}, keys::{GeneratableKey, GeneratedKey}, rusqlite::Connection, KeychainKind, PersistedWallet, Wallet
+    KeychainKind, PersistedWallet, Wallet,
+    bitcoin::{
+        Network,
+        bip32::{self, Xpub},
+        secp256k1::Secp256k1,
+    },
+    keys::{GeneratableKey, GeneratedKey},
+    rusqlite::Connection,
 };
 
 const FILENAME: &str = "./wallet.db";
@@ -18,15 +28,23 @@ pub struct MyWallet {
 
 impl MyWallet {
     pub const WALLET_NETWORK: Network = Network::Regtest;
-    const XPRV: &str = "tprv8ZgxMBicQKsPeRFT9QhoQB9GCqjRn1UQKjd2yhWQfcsap85HbfqxFMMTtVAR9QL7WZYKbv4PzJewTz7zm6BKEgf2CqkvwYrgDRetPELZuVh";
-    // const XPUB: &str = "tpubD6NzVbkrYhZ4XtHF34NPoaoNmsFMwLfJu3DpGDYi5tfyecL4E4fYRqyL4exSaSz4cKCRUnodM9KJTmq2sWYMcZ9VWeHTfPSGxTqtTJYtE3t";
-
 
     pub fn create_wallet() -> Result<Self> {
         let mut conn = Connection::open(FILENAME).expect("Can't open database");
 
-        let xprv_extn = format!("tr({}/{})", Self::XPRV, WALLET_EXTR_PATH);
-        let xprv_intr = format!("tr({}/{})", Self::XPRV, WALLET_INTR_PATH);
+        let mut xprv = String::new();
+        match File::open("xprv.txt") {
+            Ok(mut f) => {
+                match f.read_to_string(&mut xprv) {
+                    Ok(_) => { println!("xprv: {}", xprv) },
+                    Err(_) => { println!("fail read `xprv.txt`") },
+                };
+            },
+            Err(_) => { println!("`xprv.txt` not found") },
+        };
+
+        let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
+        let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
         let wallet_opt = Wallet::load()
             .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
             .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
@@ -43,17 +61,17 @@ impl MyWallet {
                 let xpub = Xpub::from_priv(&secp, &xprv);
                 println!("xprv = {:#?}", xprv.to_string());
                 println!("xpub = {:#?}", xpub.to_string());
-                // let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
-                // let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
-                Wallet::create(xprv_extn.clone(), xprv_intr.clone())
+                let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
+                let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
+                let w = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
                     .network(Self::WALLET_NETWORK)
-                    .create_wallet(&mut conn)?
+                    .create_wallet(&mut conn)?;
+                let path = &Path::new("xprv.txt");
+                let _ = File::create(path)?.write_all(xprv.to_string().as_bytes());
+                w
             }
         };
-        Ok(MyWallet {
-            wallet,
-            conn,
-        })
+        Ok(MyWallet { wallet, conn })
     }
 
     pub fn persist(&mut self) {
