@@ -1,9 +1,6 @@
 use anyhow::Result;
 use bdk_wallet::{
-    PersistedWallet, Wallet,
-    bitcoin::{Network, bip32},
-    keys::{GeneratableKey, GeneratedKey},
-    rusqlite::Connection,
+    bitcoin::{bip32::{self, Xpub}, secp256k1::Secp256k1, Network}, keys::{GeneratableKey, GeneratedKey}, rusqlite::Connection, KeychainKind, PersistedWallet, Wallet
 };
 
 const FILENAME: &str = "./wallet.db";
@@ -21,11 +18,18 @@ pub struct MyWallet {
 
 impl MyWallet {
     pub const WALLET_NETWORK: Network = Network::Regtest;
+    const XPRV: &str = "tprv8ZgxMBicQKsPeRFT9QhoQB9GCqjRn1UQKjd2yhWQfcsap85HbfqxFMMTtVAR9QL7WZYKbv4PzJewTz7zm6BKEgf2CqkvwYrgDRetPELZuVh";
+    // const XPUB: &str = "tpubD6NzVbkrYhZ4XtHF34NPoaoNmsFMwLfJu3DpGDYi5tfyecL4E4fYRqyL4exSaSz4cKCRUnodM9KJTmq2sWYMcZ9VWeHTfPSGxTqtTJYtE3t";
+
 
     pub fn create_wallet() -> Result<Self> {
         let mut conn = Connection::open(FILENAME).expect("Can't open database");
 
+        let xprv_extn = format!("tr({}/{})", Self::XPRV, WALLET_EXTR_PATH);
+        let xprv_intr = format!("tr({}/{})", Self::XPRV, WALLET_INTR_PATH);
         let wallet_opt = Wallet::load()
+            .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
+            .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
             .extract_keys()
             .check_network(Self::WALLET_NETWORK)
             .load_wallet(&mut conn)?;
@@ -35,9 +39,12 @@ impl MyWallet {
                 let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
                 let mut xprv = xprv.into_key();
                 xprv.network = Self::WALLET_NETWORK.into();
+                let secp = Secp256k1::new();
+                let xpub = Xpub::from_priv(&secp, &xprv);
                 println!("xprv = {:#?}", xprv.to_string());
-                let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
-                let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
+                println!("xpub = {:#?}", xpub.to_string());
+                // let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
+                // let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
                 Wallet::create(xprv_extn.clone(), xprv_intr.clone())
                     .network(Self::WALLET_NETWORK)
                     .create_wallet(&mut conn)?

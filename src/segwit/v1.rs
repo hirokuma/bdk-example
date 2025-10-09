@@ -11,6 +11,8 @@ pub fn segwit_v1(
     pay_amount: Amount,
     fee_rate: FeeRate,
 ) -> Result<Transaction> {
+    println!("signers len: {}", wallet.get_signers(KeychainKind::External).signers().len());
+
     let prev_outpoint = OutPoint {
         txid: prev_tx.compute_txid(),
         vout: prev_index,
