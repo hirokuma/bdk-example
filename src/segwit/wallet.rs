@@ -6,8 +6,7 @@ use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
     bitcoin::{
         Network,
-        bip32::{self, Xpub},
-        secp256k1::Secp256k1,
+        bip32,
     },
     keys::{GeneratableKey, GeneratedKey},
     rusqlite::Connection,
@@ -36,7 +35,7 @@ impl MyWallet {
         match File::open("xprv.txt") {
             Ok(mut f) => {
                 match f.read_to_string(&mut xprv) {
-                    Ok(_) => { println!("xprv: {}", xprv) },
+                    Ok(_) => { /*println!("xprv: {}", xprv)*/ },
                     Err(_) => { println!("fail read `xprv.txt`") },
                 };
             },
@@ -57,10 +56,10 @@ impl MyWallet {
                 let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
                 let mut xprv = xprv.into_key();
                 xprv.network = Self::WALLET_NETWORK.into();
-                let secp = Secp256k1::new();
-                let xpub = Xpub::from_priv(&secp, &xprv);
-                println!("xprv = {:#?}", xprv.to_string());
-                println!("xpub = {:#?}", xpub.to_string());
+                // let secp = Secp256k1::new();
+                // let xpub = Xpub::from_priv(&secp, &xprv);
+                // println!("xprv = {:#?}", xprv.to_string());
+                // println!("xpub = {:#?}", xpub.to_string());
                 let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
                 let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
                 let w = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
