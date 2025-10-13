@@ -5,9 +5,9 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "spend",
             "type": "lldb",
             "request": "launch",
-            "name": "spend",
             "program": "${workspaceFolder}/target/debug/bdk-starter-example",
             "args": ["spend", "0200000000010143f501b3b71cf66f01d671e4af407c52da3a75335c39355751c43a3cb26943190000000000fdffffff02bb59f40500000000225120cbb68dedd8e1bcece819b6189f71a1eef744863c40ec283e795105d522cbf56ba086010000000000225120d880db89fb2907f7fc0332e2050fa4739fc4ba4774a3a0079fc0af2d63e79a0b024730440220069ba79897a4d6cbc54625cc88534262c90e12974b4107cea25ad2922f8fce0e02206d33761e602e25e5f6dff5279c1436717f9c06e234478c695ef6cba48764097001210269a3f8b100cdfc2a0924109ec27ddc827ce7c747561ceab627032c774124677967000000", "1", "bcrt1qtu7x8w87ddntdqtjpuffpvcarnyzw99pj4hpeh", "50000", "1"],
             "cwd": "${workspaceFolder}",
@@ -16,15 +16,16 @@
             "sourceMap": {"/mnt/wsl/home2/ueno/Bitcoin/rust/bdk-example": "/home/ueno/Bitcoin/rust/bdk-example"}
         },
         {
-            "type": "lldb",
-            "request": "launch",
             "name": "addr",
+            "type": "lldb-dap",
+            "request": "launch",
             "program": "${workspaceFolder}/target/debug/bdk-starter-example",
             "args": ["addr"],
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "rust: cargo build",
-            "terminal": "integrated",
-            "sourceMap": {"/mnt/wsl/home2/ueno/Bitcoin/rust/bdk-example": "/home/ueno/Bitcoin/rust/bdk-example"}
+            "initCommands": [
+                "command script import ~/Downloads/rust/src/etc/lldb_lookup.py",
+                "command source ~/Downloads/rust/src/etc/lldb_commands"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
