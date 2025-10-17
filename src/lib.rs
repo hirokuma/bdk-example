@@ -9,13 +9,8 @@ use segwit::{v1, wallet::MyWallet};
 
 use network::BitcoinRpc;
 
-// bitcoin.conf
-const RPC_USER: &str = "testuser";
-const RPC_PASS: &str = "testpass";
-const RPC_SERVER: &str = "http://127.0.0.1:18443";
-
 pub fn cmd_addresses() -> Result<(), String> {
-    let wallet = init()?;
+    let (wallet, _) = init()?;
     let index = match wallet.wallet.derivation_index(KeychainKind::External) {
         Some(index) => index,
         None => Err("derivation not found")?,
@@ -28,7 +23,7 @@ pub fn cmd_addresses() -> Result<(), String> {
 }
 
 pub fn cmd_newaddr() -> Result<(), String> {
-    let mut wallet = init()?;
+    let (mut wallet, _) = init()?;
     let addr = wallet.wallet.next_unused_address(KeychainKind::External);
     wallet.persist();
     println!("address: {}", addr);
@@ -59,7 +54,7 @@ pub fn cmd_spend(
     let out_amount = Amount::from_sat(amount);
     let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
 
-    let mut wallet = init()?;
+    let (mut wallet, _) = init()?;
     let tx = match v1::segwit_v1(
         &mut wallet.wallet,
         prev_tx,
@@ -80,7 +75,7 @@ pub fn cmd_spend(
     Ok(())
 }
 
-fn init() -> Result<MyWallet, String> {
+fn init() -> Result<(MyWallet, BitcoinRpc), String> {
     let mut wallet = match MyWallet::create_wallet() {
         Ok(wallet) => wallet,
         Err(e) => {
@@ -88,14 +83,10 @@ fn init() -> Result<MyWallet, String> {
             return Err(e.to_string());
         }
     };
-    let mut rpc = BitcoinRpc {
-        user: RPC_USER.to_string(),
-        password: RPC_PASS.to_string(),
-        server: RPC_SERVER.to_string(),
-    };
+    let mut rpc = BitcoinRpc::new().unwrap();
     rpc.sync(&mut wallet);
 
-    Ok(wallet)
+    Ok((wallet, rpc))
 }
 
 fn receivers_address(addr: &str) -> Address {
