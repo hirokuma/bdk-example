@@ -1,10 +1,18 @@
+pub mod network;
 pub mod segwit;
 
 use std::str::FromStr;
 
-use bdk_wallet::{KeychainKind};
-use bitcoin::{consensus::encode, Address, Amount, FeeRate, Transaction};
+use bdk_wallet::KeychainKind;
+use bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode};
 use segwit::{v1, wallet::MyWallet};
+
+use network::BitcoinRpc;
+
+// bitcoin.conf
+const RPC_USER: &str = "testuser";
+const RPC_PASS: &str = "testpass";
+const RPC_SERVER: &str = "http://127.0.0.1:18443";
 
 pub fn cmd_addresses() -> Result<(), String> {
     let wallet = init()?;
@@ -41,7 +49,7 @@ pub fn cmd_spend(
     prev_index: u32,
     out_addr: &String,
     amount: u64,
-    fee_rate: f64
+    fee_rate: f64,
 ) -> Result<(), String> {
     let prev_tx: Transaction = match encode::deserialize_hex(prev_tx_hex) {
         Ok(tx) => tx,
@@ -53,8 +61,8 @@ pub fn cmd_spend(
 
     let mut wallet = init()?;
     let tx = match v1::segwit_v1(
-        &mut wallet.wallet, 
-        prev_tx, 
+        &mut wallet.wallet,
+        prev_tx,
         prev_index,
         out_addr,
         out_amount,
@@ -73,13 +81,21 @@ pub fn cmd_spend(
 }
 
 fn init() -> Result<MyWallet, String> {
-    match MyWallet::create_wallet() {
-        Ok(wallet) => Ok(wallet),
+    let mut wallet = match MyWallet::create_wallet() {
+        Ok(wallet) => wallet,
         Err(e) => {
             eprintln!("Error init: {}", e);
-            Err(e.to_string())
+            return Err(e.to_string());
         }
-    }
+    };
+    let mut rpc = BitcoinRpc {
+        user: RPC_USER.to_string(),
+        password: RPC_PASS.to_string(),
+        server: RPC_SERVER.to_string(),
+    };
+    rpc.sync(&mut wallet);
+
+    Ok(wallet)
 }
 
 fn receivers_address(addr: &str) -> Address {

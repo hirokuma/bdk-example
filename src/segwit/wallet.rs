@@ -1,13 +1,11 @@
-use std::{fs::File, path::Path};
 use std::io::prelude::*;
+use std::{fs::File, path::Path};
 
 use anyhow::Result;
+
 use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
-    bitcoin::{
-        Network,
-        bip32,
-    },
+    bitcoin::{Network, bip32},
     keys::{GeneratableKey, GeneratedKey},
     rusqlite::Connection,
 };
@@ -35,11 +33,15 @@ impl MyWallet {
         match File::open("xprv.txt") {
             Ok(mut f) => {
                 match f.read_to_string(&mut xprv) {
-                    Ok(_) => { /*println!("xprv: {}", xprv)*/ },
-                    Err(_) => { println!("fail read `xprv.txt`") },
+                    Ok(_) => { /*println!("xprv: {}", xprv)*/ }
+                    Err(_) => {
+                        println!("fail read `xprv.txt`")
+                    }
                 };
-            },
-            Err(_) => { println!("`xprv.txt` not found") },
+            }
+            Err(_) => {
+                println!("`xprv.txt` not found")
+            }
         };
 
         let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
