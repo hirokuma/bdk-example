@@ -13,5 +13,5 @@ anyhow = "1.0.100"
 miniscript = "12.3.5"
 bdk_bitcoind_rpc = "0.22.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_yaml = "0.9.34"
 clap = { version = "4.3.10", features = ["derive"] }
+toml = "0.9.8"

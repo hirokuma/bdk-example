@@ -1,5 +1,5 @@
 /target
 
-*.db
-*.txt
-*.yaml
+wallet.db
+xprv.txt
+wallet.toml

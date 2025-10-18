@@ -1,10 +1,11 @@
-use std::io::BufReader;
+use std::io::prelude::*;
 use std::sync::Arc;
 use std::fs::File;
 
 use anyhow::Result;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use toml;
 
 use bdk_bitcoind_rpc::{
     Emitter, NO_EXPECTED_MEMPOOL_TXS,
@@ -15,9 +16,9 @@ use bdk_wallet::{Balance, bitcoin::Transaction, chain::local_chain::CheckPoint};
 
 use crate::segwit::wallet::MyWallet;
 
-const FILENAME: &str = "./wallet.yaml";
+const FILENAME: &str = "./wallet.toml";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct BitcoinRpc {
     pub user: String,
     pub password: String,
@@ -26,9 +27,10 @@ pub struct BitcoinRpc {
 
 impl BitcoinRpc {
     pub fn new() -> Result<BitcoinRpc> {
-        let file = File::open(FILENAME)?;
-        let reader = BufReader::new(file);
-        let data: BitcoinRpc = serde_yaml::from_reader(reader)?;
+        let mut settings = String::new();
+        let mut f = File::open(FILENAME)?;
+        f.read_to_string(&mut settings)?;
+        let data: BitcoinRpc = toml::from_str(&settings)?;
         Ok(data)
     }
 
