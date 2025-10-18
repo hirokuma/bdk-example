@@ -26,7 +26,7 @@ pub struct BitcoinRpc {
 
 impl BitcoinRpc {
     pub fn new() -> Result<BitcoinRpc> {
-        let file = File::open(FILENAME).unwrap();
+        let file = File::open(FILENAME)?;
         let reader = BufReader::new(file);
         let data: BitcoinRpc = serde_yaml::from_reader(reader)?;
         Ok(data)
