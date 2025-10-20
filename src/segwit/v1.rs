@@ -1,9 +1,9 @@
 use anyhow::Result;
 
 use bdk_wallet::{
-    rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions,
+    rusqlite::Connection, PersistedWallet, SignOptions,
     bitcoin::{
-        psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction,
+        Address, Amount, FeeRate, Transaction,
     },
 };
 
@@ -15,7 +15,6 @@ pub fn segwit_v1(
     pay_amount: Amount,
     fee_rate: FeeRate,
 ) -> Result<Transaction> {
-    let weight = wallet.public_descriptor(KeychainKind::External).max_weight_to_satisfy()?;
     let mut psbt = {
         let mut builder = wallet.build_tx();
         builder.only_witness_utxo();
