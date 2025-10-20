@@ -1,7 +1,11 @@
 use anyhow::Result;
 
-use bdk_wallet::{rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions};
-use bitcoin::{psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction};
+use bdk_wallet::{
+    rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions,
+    bitcoin::{
+        psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction,
+    },
+};
 
 pub fn segwit_v1(
     wallet: &mut PersistedWallet<Connection>, 
@@ -18,7 +22,7 @@ pub fn segwit_v1(
         vout: prev_index,
     };
     let input = Input {
-        witness_utxo: Some(prev_tx.tx_out(prev_index as usize).unwrap().clone()),
+        witness_utxo: Some(prev_tx.tx_out(prev_index as usize)?.clone()),
         ..Default::default()
     };
     let weight = wallet.public_descriptor(KeychainKind::External).max_weight_to_satisfy()?;

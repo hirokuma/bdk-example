@@ -1,18 +1,18 @@
-use std::{fs::File, path::Path};
 use std::io::prelude::*;
+use std::{fs::File, path::Path};
 
 use anyhow::Result;
+
 use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
-    bitcoin::{
-        Network,
-        bip32,
-    },
+    bitcoin::{Network, bip32},
+    miniscript,
     keys::{GeneratableKey, GeneratedKey},
     rusqlite::Connection,
 };
 
 const FILENAME: &str = "./wallet.db";
+const XPRV_FILE: &str = "./xprv.txt";
 
 // m / purpose' / coin_type' / account' / change / address_index
 // purpose = 44(P2PKH), 49(P2WPKH-nested-in-BIP16), 84(P2WPKH), 86(P2TR)
@@ -32,15 +32,8 @@ impl MyWallet {
         let mut conn = Connection::open(FILENAME).expect("Can't open database");
 
         let mut xprv = String::new();
-        match File::open("xprv.txt") {
-            Ok(mut f) => {
-                match f.read_to_string(&mut xprv) {
-                    Ok(_) => { /*println!("xprv: {}", xprv)*/ },
-                    Err(_) => { println!("fail read `xprv.txt`") },
-                };
-            },
-            Err(_) => { println!("`xprv.txt` not found") },
-        };
+        let mut f = File::open(XPRV_FILE)?;
+        f.read_to_string(&mut xprv)?;
 
         let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
         let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
@@ -65,7 +58,7 @@ impl MyWallet {
                 let w = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
                     .network(Self::WALLET_NETWORK)
                     .create_wallet(&mut conn)?;
-                let path = &Path::new("xprv.txt");
+                let path = &Path::new(XPRV_FILE);
                 let _ = File::create(path)?.write_all(xprv.to_string().as_bytes());
                 w
             }
@@ -82,11 +75,15 @@ impl MyWallet {
 mod tests {
     use std::str::FromStr;
 
-    use bdk_wallet::{AddressInfo, KeychainKind};
-    use bitcoin::bip32::{DerivationPath, Xpriv};
-    use bitcoin::key::{TapTweak, XOnlyPublicKey};
-    use bitcoin::secp256k1::{PublicKey, Secp256k1};
-    use bitcoin::{Address, Script};
+    use bdk_wallet::{
+        AddressInfo, KeychainKind,
+        bitcoin::{
+            bip32::{DerivationPath, Xpriv},
+            key::{TapTweak, XOnlyPublicKey},
+            secp256k1::{PublicKey, Secp256k1},
+            Address, Script,
+        },
+    };
 
     use super::*;
 

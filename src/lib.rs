@@ -1,16 +1,23 @@
+pub mod network;
 pub mod segwit;
 
 use std::str::FromStr;
 
-use bdk_wallet::{KeychainKind};
-use bitcoin::{consensus::encode, Address, Amount, FeeRate, Transaction};
+use anyhow::Result;
+
+use bdk_wallet::{
+    KeychainKind,
+    bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode},
+};
 use segwit::{v1, wallet::MyWallet};
 
-pub fn cmd_addresses() -> Result<(), String> {
-    let wallet = init()?;
+use network::BitcoinRpc;
+
+pub fn cmd_addresses() -> Result<()> {
+    let (wallet, _) = init()?;
     let index = match wallet.wallet.derivation_index(KeychainKind::External) {
+        None => { return Err(anyhow::anyhow!("No addresses found")); },
         Some(index) => index,
-        None => Err("derivation not found")?,
     };
     for i in 0..=index {
         let addr = wallet.wallet.peek_address(KeychainKind::External, i);
@@ -19,19 +26,16 @@ pub fn cmd_addresses() -> Result<(), String> {
     Ok(())
 }
 
-pub fn cmd_newaddr() -> Result<(), String> {
-    let mut wallet = init()?;
+pub fn cmd_newaddr() -> Result<()> {
+    let (mut wallet, _) = init()?;
     let addr = wallet.wallet.next_unused_address(KeychainKind::External);
     wallet.persist();
     println!("address: {}", addr);
     Ok(())
 }
 
-pub fn cmd_tx(tx_hex: &String) -> Result<(), String> {
-    let tx: Transaction = match encode::deserialize_hex(tx_hex) {
-        Ok(tx) => tx,
-        Err(e) => { Err(e.to_string()) }?,
-    };
+pub fn cmd_tx(tx_hex: &String) -> Result<()> {
+    let tx: Transaction = encode::deserialize_hex(tx_hex)?;
     println!("{:#?}", tx);
     Ok(())
 }
@@ -41,28 +45,22 @@ pub fn cmd_spend(
     prev_index: u32,
     out_addr: &String,
     amount: u64,
-    fee_rate: f64
-) -> Result<(), String> {
-    let prev_tx: Transaction = match encode::deserialize_hex(prev_tx_hex) {
-        Ok(tx) => tx,
-        Err(e) => { Err(e.to_string()) }?,
-    };
+    fee_rate: f64,
+) -> Result<()> {
+    let prev_tx: Transaction = encode::deserialize_hex(prev_tx_hex)?;
     let out_addr = receivers_address(out_addr);
     let out_amount = Amount::from_sat(amount);
     let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
 
-    let mut wallet = init()?;
-    let tx = match v1::segwit_v1(
-        &mut wallet.wallet, 
-        prev_tx, 
+    let (mut wallet, _) = init()?;
+    let tx = v1::segwit_v1(
+        &mut wallet.wallet,
+        prev_tx,
         prev_index,
         out_addr,
         out_amount,
         fee_rate,
-    ) {
-        Ok(tx) => tx,
-        Err(e) => { Err(e.to_string()) }?,
-    };
+    )?;
 
     let s: Vec<u8> = encode::serialize(&tx);
     let hex_str = s.iter().map(|b| format!("{:02x}", b)).collect::<String>();
@@ -72,14 +70,12 @@ pub fn cmd_spend(
     Ok(())
 }
 
-fn init() -> Result<MyWallet, String> {
-    match MyWallet::create_wallet() {
-        Ok(wallet) => Ok(wallet),
-        Err(e) => {
-            eprintln!("Error init: {}", e);
-            Err(e.to_string())
-        }
-    }
+fn init() -> Result<(MyWallet, BitcoinRpc)> {
+    let mut wallet = MyWallet::create_wallet()?;
+    let mut rpc = BitcoinRpc::new()?;
+    rpc.sync(&mut wallet)?;
+
+    Ok((wallet, rpc))
 }
 
 fn receivers_address(addr: &str) -> Address {
