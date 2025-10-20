@@ -24,10 +24,6 @@ enum Commands {
     },
     /// Create a spendable transaction.
     Spend {
-        /// input tx hex
-        raw_tx: String,
-        /// out index
-        out_index: u32,
         /// output address
         out_addr: String,
         /// amount sats
@@ -49,8 +45,8 @@ fn main() -> Result<()> {
         Some(Commands::Addr) => lib::cmd_addresses()?,
         Some(Commands::NewAddr) => lib::cmd_newaddr()?,
         Some(Commands::Tx { hex }) => lib::cmd_tx(&hex)?,
-        Some(Commands::Spend { raw_tx, out_index, out_addr, amount, fee_rate }) => {
-            lib::cmd_spend(&raw_tx, out_index, &out_addr, amount, fee_rate)?
+        Some(Commands::Spend { out_addr, amount, fee_rate }) => {
+            lib::cmd_spend(&out_addr, amount, fee_rate)?
         }
     }
 

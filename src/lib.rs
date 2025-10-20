@@ -41,13 +41,10 @@ pub fn cmd_tx(tx_hex: &String) -> Result<()> {
 }
 
 pub fn cmd_spend(
-    prev_tx_hex: &String,
-    prev_index: u32,
     out_addr: &String,
     amount: u64,
     fee_rate: f64,
 ) -> Result<()> {
-    let prev_tx: Transaction = encode::deserialize_hex(prev_tx_hex)?;
     let out_addr = receivers_address(out_addr);
     let out_amount = Amount::from_sat(amount);
     let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
@@ -55,8 +52,6 @@ pub fn cmd_spend(
     let (mut wallet, _) = init()?;
     let tx = v1::segwit_v1(
         &mut wallet.wallet,
-        prev_tx,
-        prev_index,
         out_addr,
         out_amount,
         fee_rate,
