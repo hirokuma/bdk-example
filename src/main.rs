@@ -15,6 +15,7 @@ enum Commands {
     /// Get addresses.
     Addr,
     /// Get new address.
+    #[command(name = "newaddr")]
     NewAddr,
     /// Decode transaction hex string.
     Tx {

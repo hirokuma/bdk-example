@@ -60,18 +60,18 @@ impl BitcoinRpc {
             NO_EXPECTED_MEMPOOL_TXS,
         );
 
-        println!("Syncing blocks...");
+        print!("Syncing blocks...");
         while let Some(block) = emitter.next_block()? {
-            print!("{} ", block.block_height());
             wallet
                 .wallet
                 .apply_block_connected_to(&block.block, block.block_height(), block.connected_to())?;
         }
-        println!();
+        println!("done.");
 
         println!("Syncing mempool...");
         let mempool_emissions: Vec<(Arc<Transaction>, u64)> = emitter.mempool()?.update;
         wallet.wallet.apply_unconfirmed_txs(mempool_emissions);
+        wallet.persist();
 
         let balance: Balance = wallet.wallet.balance();
         println!("Wallet balance after syncing: {}", balance.total());
