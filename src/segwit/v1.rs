@@ -1,7 +1,11 @@
 use anyhow::Result;
 
-use bdk_wallet::{rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions};
-use bitcoin::{psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction};
+use bdk_wallet::{
+    rusqlite::Connection, KeychainKind, PersistedWallet, SignOptions,
+    bitcoin::{
+        psbt::Input, Address, Amount, FeeRate, OutPoint, Transaction,
+    },
+};
 
 pub fn segwit_v1(
     wallet: &mut PersistedWallet<Connection>, 

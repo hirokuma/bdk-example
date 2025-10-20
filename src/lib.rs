@@ -5,8 +5,10 @@ use std::str::FromStr;
 
 use anyhow::Result;
 
-use bdk_wallet::KeychainKind;
-use bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode};
+use bdk_wallet::{
+    KeychainKind,
+    bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode},
+};
 use segwit::{v1, wallet::MyWallet};
 
 use network::BitcoinRpc;

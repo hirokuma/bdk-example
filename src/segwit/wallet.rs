@@ -6,6 +6,7 @@ use anyhow::Result;
 use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
     bitcoin::{Network, bip32},
+    miniscript,
     keys::{GeneratableKey, GeneratedKey},
     rusqlite::Connection,
 };
@@ -74,11 +75,15 @@ impl MyWallet {
 mod tests {
     use std::str::FromStr;
 
-    use bdk_wallet::{AddressInfo, KeychainKind};
-    use bitcoin::bip32::{DerivationPath, Xpriv};
-    use bitcoin::key::{TapTweak, XOnlyPublicKey};
-    use bitcoin::secp256k1::{PublicKey, Secp256k1};
-    use bitcoin::{Address, Script};
+    use bdk_wallet::{
+        AddressInfo, KeychainKind,
+        bitcoin::{
+            bip32::{DerivationPath, Xpriv},
+            key::{TapTweak, XOnlyPublicKey},
+            secp256k1::{PublicKey, Secp256k1},
+            Address, Script,
+        },
+    };
 
     use super::*;
 
