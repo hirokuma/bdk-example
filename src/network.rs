@@ -34,14 +34,13 @@ impl BitcoinRpc {
         Ok(data)
     }
 
-    pub fn sync(&mut self, wallet: &mut MyWallet) {
+    pub fn sync(&mut self, wallet: &mut MyWallet) -> Result<()> {
         let rpc_client: Client = Client::new(
             &self.server,
             Auth::UserPass(self.user.clone(), self.password.clone()),
-        )
-        .unwrap();
+        )?;
 
-        let blockchain_info = rpc_client.get_blockchain_info().unwrap();
+        let blockchain_info = rpc_client.get_blockchain_info()?;
         println!(
             "\nConnected to Bitcoin Core RPC.\nChain: {}\nLatest block: {} at height {}\n",
             blockchain_info.chain, blockchain_info.best_block_hash, blockchain_info.blocks,
@@ -62,20 +61,20 @@ impl BitcoinRpc {
         );
 
         println!("Syncing blocks...");
-        while let Some(block) = emitter.next_block().unwrap() {
+        while let Some(block) = emitter.next_block()? {
             print!("{} ", block.block_height());
             wallet
                 .wallet
-                .apply_block_connected_to(&block.block, block.block_height(), block.connected_to())
-                .unwrap();
+                .apply_block_connected_to(&block.block, block.block_height(), block.connected_to())?;
         }
         println!();
 
         println!("Syncing mempool...");
-        let mempool_emissions: Vec<(Arc<Transaction>, u64)> = emitter.mempool().unwrap().update;
+        let mempool_emissions: Vec<(Arc<Transaction>, u64)> = emitter.mempool()?.update;
         wallet.wallet.apply_unconfirmed_txs(mempool_emissions);
 
         let balance: Balance = wallet.wallet.balance();
         println!("Wallet balance after syncing: {}", balance.total());
+        Ok(())
     }
 }

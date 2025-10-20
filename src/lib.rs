@@ -73,7 +73,7 @@ pub fn cmd_spend(
 fn init() -> Result<(MyWallet, BitcoinRpc)> {
     let mut wallet = MyWallet::create_wallet()?;
     let mut rpc = BitcoinRpc::new()?;
-    rpc.sync(&mut wallet);
+    rpc.sync(&mut wallet)?;
 
     Ok((wallet, rpc))
 }
