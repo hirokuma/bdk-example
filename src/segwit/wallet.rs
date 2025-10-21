@@ -1,14 +1,14 @@
 use std::io::prelude::*;
 use std::{fs::File, path::Path};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
     bitcoin::{Network, bip32},
     miniscript,
     keys::{GeneratableKey, GeneratedKey},
-    rusqlite::Connection,
+    rusqlite::Connection, rusqlite::OpenFlags,
 };
 
 const FILENAME: &str = "./wallet.db";
@@ -30,39 +30,59 @@ impl MyWallet {
     pub const WALLET_NETWORK: Network = Network::Regtest;
 
     pub fn create_wallet() -> Result<Self> {
-        let mut conn = Connection::open(FILENAME).expect("Can't open database");
+        let path = Path::new(XPRV_FILE);
+        if path.exists() {
+            return Err(anyhow::Error::msg("Already wallet exists."));
+        } else {
+            let mut conn = Connection::open(FILENAME)
+                .context("Can't open database")?;
+            let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())
+                .context("Fail Xpriv::generate")?;
+            let mut xprv = xprv.into_key();
+            xprv.network = Self::WALLET_NETWORK.into();
+            // let secp = Secp256k1::new();
+            // let xpub = Xpub::from_priv(&secp, &xprv);
+            // println!("xprv = {:#?}", xprv.to_string());
+            // println!("xpub = {:#?}", xpub.to_string());
 
-        let mut xprv = String::new();
-        let mut f = File::open(XPRV_FILE)?;
-        f.read_to_string(&mut xprv)?;
+            let xprv_extn = format!("tr({}/{}/0/*)", xprv, WALLET_PATH);
+            let xprv_intr = format!("tr({}/{}/1/*)", xprv, WALLET_PATH);
+            let wallet = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
+                .network(Self::WALLET_NETWORK)
+                .create_wallet(&mut conn)
+                .context("Fail create_wallet")?;
+            let _ = File::create(path).context("Fail File::create")?.write_all(xprv.to_string().as_bytes());
+            return Ok(MyWallet { wallet, conn });
+        }
+    }
 
-        let xprv_extn = format!("tr({}/{}/0/*)", xprv, WALLET_PATH);
-        let xprv_intr = format!("tr({}/{}/1/*)", xprv, WALLET_PATH);
-        let wallet_opt = Wallet::load()
-            .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
-            .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
-            .extract_keys()
-            .check_network(Self::WALLET_NETWORK)
-            .load_wallet(&mut conn)?;
-        let wallet = match wallet_opt {
-            Some(wallet) => wallet,
-            None => {
-                let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())?;
-                let mut xprv = xprv.into_key();
-                xprv.network = Self::WALLET_NETWORK.into();
-                // let secp = Secp256k1::new();
-                // let xpub = Xpub::from_priv(&secp, &xprv);
-                // println!("xprv = {:#?}", xprv.to_string());
-                // println!("xpub = {:#?}", xpub.to_string());
-                let w = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
-                    .network(Self::WALLET_NETWORK)
-                    .create_wallet(&mut conn)?;
-                let path = &Path::new(XPRV_FILE);
-                let _ = File::create(path)?.write_all(xprv.to_string().as_bytes());
-                w
-            }
-        };
-        Ok(MyWallet { wallet, conn })
+
+    pub fn load_wallet() -> Result<Self> {
+        let path = Path::new(XPRV_FILE);
+        if path.exists() {
+            let mut conn = Connection::open_with_flags(FILENAME, OpenFlags::SQLITE_OPEN_READ_WRITE)
+                .context("Can't open database")?;
+            let mut xprv = String::new();
+            let mut f = File::open(XPRV_FILE).context("Fail File::open")?;
+            f.read_to_string(&mut xprv).context("Fail read_to_string from xprv file")?;
+
+            let xprv_extn = format!("tr({}/{}/0/*)", xprv, WALLET_PATH);
+            let xprv_intr = format!("tr({}/{}/1/*)", xprv, WALLET_PATH);
+            let wallet_opt = Wallet::load()
+                .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
+                .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
+                .extract_keys()
+                .check_network(Self::WALLET_NETWORK)
+                .load_wallet(&mut conn)
+                .context("Fail Wallet::load")?;
+            let wallet = match wallet_opt {
+                None => { return Err(anyhow::Error::msg("Wallet::load result is None")); },
+                Some(wallet) => wallet,
+            };
+            return Ok(MyWallet { wallet, conn });
+        } else {
+            return Err(anyhow::Error::msg("Wallet not exists."));
+        }
     }
 
     pub fn persist(&mut self) {

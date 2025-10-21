@@ -13,6 +13,12 @@ use segwit::{v1, wallet::MyWallet};
 
 use network::BitcoinRpc;
 
+pub fn cmd_create() -> Result<()> {
+    MyWallet::create_wallet()?;
+    println!("Success.");
+    Ok(())
+}
+
 pub fn cmd_addresses() -> Result<()> {
     let (wallet, _) = init()?;
     let index = match wallet.wallet.derivation_index(KeychainKind::External) {
@@ -66,7 +72,7 @@ pub fn cmd_spend(
 }
 
 fn init() -> Result<(MyWallet, BitcoinRpc)> {
-    let mut wallet = MyWallet::create_wallet()?;
+    let mut wallet = MyWallet::load_wallet()?;
     let mut rpc = BitcoinRpc::new()?;
     rpc.sync(&mut wallet)?;
 

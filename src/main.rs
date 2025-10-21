@@ -12,6 +12,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Create wallet
+    Create,
     /// Get addresses.
     Addr,
     /// Get new address.
@@ -42,6 +44,7 @@ fn main() -> Result<()> {
             Cli::command().print_help()?;
             println!();
         }
+        Some(Commands::Create) => lib::cmd_create()?,
         Some(Commands::Addr) => lib::cmd_addresses()?,
         Some(Commands::NewAddr) => lib::cmd_newaddr()?,
         Some(Commands::Tx { hex }) => lib::cmd_tx(&hex)?,
