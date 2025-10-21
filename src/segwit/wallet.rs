@@ -17,8 +17,9 @@ const XPRV_FILE: &str = "./xprv.txt";
 // m / purpose' / coin_type' / account' / change / address_index
 // purpose = 44(P2PKH), 49(P2WPKH-nested-in-BIP16), 84(P2WPKH), 86(P2TR)
 // coin_type = 0(mainnet), 1(testnet)
-const WALLET_EXTR_PATH: &str = "86'/1'/0'/0/*";
-const WALLET_INTR_PATH: &str = "86'/1'/0'/1/*";
+// change = 0(external), 1(internal)
+// address_index = 0, 1, ...
+const WALLET_PATH: &str = "86'/1'/0'";
 
 pub struct MyWallet {
     pub wallet: PersistedWallet<Connection>,
@@ -35,8 +36,8 @@ impl MyWallet {
         let mut f = File::open(XPRV_FILE)?;
         f.read_to_string(&mut xprv)?;
 
-        let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
-        let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
+        let xprv_extn = format!("tr({}/{}/0/*)", xprv, WALLET_PATH);
+        let xprv_intr = format!("tr({}/{}/1/*)", xprv, WALLET_PATH);
         let wallet_opt = Wallet::load()
             .descriptor(KeychainKind::External, Some(xprv_extn.clone()))
             .descriptor(KeychainKind::Internal, Some(xprv_intr.clone()))
@@ -53,8 +54,6 @@ impl MyWallet {
                 // let xpub = Xpub::from_priv(&secp, &xprv);
                 // println!("xprv = {:#?}", xprv.to_string());
                 // println!("xpub = {:#?}", xpub.to_string());
-                let xprv_extn = format!("tr({}/{})", xprv, WALLET_EXTR_PATH);
-                let xprv_intr = format!("tr({}/{})", xprv, WALLET_INTR_PATH);
                 let w = Wallet::create(xprv_extn.clone(), xprv_intr.clone())
                     .network(Self::WALLET_NETWORK)
                     .create_wallet(&mut conn)?;
