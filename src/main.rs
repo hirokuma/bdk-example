@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand, CommandFactory};
 
-use bdk_starter_example as lib;
+use bdk_starter_example::{self as lib, config::Config};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -33,10 +33,17 @@ enum Commands {
         /// feerate
         fee_rate: f64,
     },
+    #[command(name = "sendtx")]
+    SendTx {
+        /// hex string to sendrawtransaction
+        hex: String,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    let config = Config::new()?;
 
     match cli.command {
         None => {
@@ -44,13 +51,14 @@ fn main() -> Result<()> {
             Cli::command().print_help()?;
             println!();
         }
-        Some(Commands::Create) => lib::cmd_create()?,
-        Some(Commands::Addr) => lib::cmd_addresses()?,
-        Some(Commands::NewAddr) => lib::cmd_newaddr()?,
-        Some(Commands::Tx { hex }) => lib::cmd_tx(&hex)?,
+        Some(Commands::Create) => lib::cmd_create(&config)?,
+        Some(Commands::Addr) => lib::cmd_addresses(&config)?,
+        Some(Commands::NewAddr) => lib::cmd_newaddr(&config)?,
+        Some(Commands::Tx { hex }) => lib::cmd_tx(&config, &hex)?,
         Some(Commands::Spend { out_addr, amount, fee_rate }) => {
-            lib::cmd_spend(&out_addr, amount, fee_rate)?
-        }
+            lib::cmd_spend(&config, &out_addr, amount, fee_rate)?
+        },
+        Some(Commands::SendTx { hex}) => lib::cmd_sendtx(&config, &hex)?,
     }
 
     Ok(())

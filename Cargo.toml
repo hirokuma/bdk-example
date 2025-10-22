@@ -9,5 +9,5 @@ bdk_bitcoind_rpc = "0.22.0"
 hex = "0.4.3"
 anyhow = "1.0.100"
 serde = { version = "1.0.228", features = ["derive"] }
-clap = { version = "4.3.10", features = ["derive"] }
+clap = { version = "4.5.50", features = ["derive"] }
 toml = "0.9.8"

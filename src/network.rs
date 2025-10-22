@@ -1,46 +1,43 @@
-use std::io::prelude::*;
 use std::sync::Arc;
-use std::fs::File;
 
 use anyhow::Result;
 
 use serde::Deserialize;
-use toml;
 
 use bdk_bitcoind_rpc::{
     Emitter, NO_EXPECTED_MEMPOOL_TXS,
     bitcoincore_rpc::{Auth, Client, RpcApi},
 };
 
-use bdk_wallet::{Balance, bitcoin::Transaction, chain::local_chain::CheckPoint};
+use bdk_wallet::{
+    bitcoin::{Transaction, Txid},
+    chain::local_chain::CheckPoint, Balance,
+};
 
 use crate::segwit::wallet::MyWallet;
 
-const FILENAME: &str = "./wallet.toml";
-
 #[derive(Deserialize, Debug)]
-pub struct BitcoinRpc {
+pub struct NetworkConfig {
     pub user: String,
     pub password: String,
     pub server: String,
 }
 
-impl BitcoinRpc {
-    pub fn new() -> Result<BitcoinRpc> {
-        let mut settings = String::new();
-        let mut f = File::open(FILENAME)?;
-        f.read_to_string(&mut settings)?;
-        let data: BitcoinRpc = toml::from_str(&settings)?;
-        Ok(data)
+pub struct NetworkRpc {
+    client: Client,
+}
+
+impl NetworkRpc {
+    pub fn new(config: &NetworkConfig) -> Result<NetworkRpc> {
+        let client: Client = Client::new(
+            &config.server,
+            Auth::UserPass(config.user.clone(), config.password.clone()),
+        )?;
+        Ok(NetworkRpc{ client })
     }
 
-    pub fn sync(&mut self, wallet: &mut MyWallet) -> Result<()> {
-        let rpc_client: Client = Client::new(
-            &self.server,
-            Auth::UserPass(self.user.clone(), self.password.clone()),
-        )?;
-
-        let blockchain_info = rpc_client.get_blockchain_info()?;
+    pub fn sync(&self, wallet: &mut MyWallet) -> Result<()> {
+        let blockchain_info = self.client.get_blockchain_info()?;
         println!(
             "\nConnected to Bitcoin Core RPC.\nChain: {}\nLatest block: {} at height {}\n",
             blockchain_info.chain, blockchain_info.best_block_hash, blockchain_info.blocks,
@@ -54,7 +51,7 @@ impl BitcoinRpc {
         );
 
         let mut emitter = Emitter::new(
-            &rpc_client,
+            &self.client,
             wallet_tip.clone(),
             wallet_tip.height(),
             NO_EXPECTED_MEMPOOL_TXS,
@@ -76,5 +73,10 @@ impl BitcoinRpc {
         let balance: Balance = wallet.wallet.balance();
         println!("Wallet balance after syncing: {}", balance.total());
         Ok(())
+    }
+
+    pub fn send_rawtx(&self, tx: &Transaction) -> Result<Txid> {
+        let txid = self.client.send_raw_transaction(tx)?;
+        Ok(txid)
     }
 }

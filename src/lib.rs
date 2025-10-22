@@ -1,3 +1,4 @@
+pub mod config;
 pub mod network;
 pub mod segwit;
 
@@ -11,16 +12,17 @@ use bdk_wallet::{
 };
 use segwit::{v1, wallet::MyWallet};
 
-use network::BitcoinRpc;
+use crate::config::Config;
+use crate::network::NetworkRpc;
 
-pub fn cmd_create() -> Result<()> {
+pub fn cmd_create(_: &Config) -> Result<()> {
     MyWallet::create_wallet()?;
     println!("Success.");
     Ok(())
 }
 
-pub fn cmd_addresses() -> Result<()> {
-    let (wallet, _) = init()?;
+pub fn cmd_addresses(config: &Config) -> Result<()> {
+    let (wallet, _) = init(config)?;
     let index = match wallet.wallet.derivation_index(KeychainKind::External) {
         None => { return Err(anyhow::anyhow!("No addresses found")); },
         Some(index) => index,
@@ -32,21 +34,22 @@ pub fn cmd_addresses() -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_newaddr() -> Result<()> {
-    let (mut wallet, _) = init()?;
+pub fn cmd_newaddr(config: &Config) -> Result<()> {
+    let (mut wallet, _) = init(config)?;
     let addr = wallet.wallet.next_unused_address(KeychainKind::External);
     wallet.persist();
     println!("address: {}", addr);
     Ok(())
 }
 
-pub fn cmd_tx(tx_hex: &String) -> Result<()> {
+pub fn cmd_tx(_: &Config, tx_hex: &String) -> Result<()> {
     let tx: Transaction = encode::deserialize_hex(tx_hex)?;
     println!("{:#?}", tx);
     Ok(())
 }
 
 pub fn cmd_spend(
+    config: &Config,
     out_addr: &String,
     amount: u64,
     fee_rate: f64,
@@ -55,7 +58,7 @@ pub fn cmd_spend(
     let out_amount = Amount::from_sat(amount);
     let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
 
-    let (mut wallet, _) = init()?;
+    let (mut wallet, _) = init(config)?;
     let tx = v1::segwit_v1(
         &mut wallet.wallet,
         out_addr,
@@ -66,16 +69,25 @@ pub fn cmd_spend(
     let s: Vec<u8> = encode::serialize(&tx);
     let hex_str = s.iter().map(|b| format!("{:02x}", b)).collect::<String>();
     println!("{}", hex_str);
-    println!("{:#?}", tx);
     println!("vsize: {}", tx.vsize());
     Ok(())
 }
 
-fn init() -> Result<(MyWallet, BitcoinRpc)> {
-    let mut wallet = MyWallet::load_wallet()?;
-    let mut rpc = BitcoinRpc::new()?;
-    rpc.sync(&mut wallet)?;
+pub fn cmd_sendtx(
+    config: &Config,
+    hex: &String,
+) -> Result<()> {
+    let (_, rpc) = init(config)?;
+    let tx: Transaction = encode::deserialize_hex(hex)?;
+    let txid = rpc.send_rawtx(&tx)?;
+    println!("txid: {}", txid);
+    Ok(())
+}
 
+fn init(config: &Config) -> Result<(MyWallet, NetworkRpc)> {
+    let mut wallet = MyWallet::load_wallet()?;
+    let rpc = NetworkRpc::new(&config.bitcoind)?;
+    rpc.sync(&mut wallet)?;
     Ok((wallet, rpc))
 }
 
