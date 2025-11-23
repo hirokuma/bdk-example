@@ -10,33 +10,47 @@ use bdk_bitcoind_rpc::{
 };
 
 use bdk_wallet::{
+    Balance,
     bitcoin::{Transaction, Txid},
-    chain::local_chain::CheckPoint, Balance,
+    chain::local_chain::CheckPoint,
 };
 
 use crate::segwit::wallet::MyWallet;
+use bdk_electrum::{BdkElectrumClient, electrum_client};
+
+pub trait BackendRpc {
+    fn full_scan(&self, wallet: &mut MyWallet) -> Result<()>;
+    fn send_rawtx(&self, tx: &Transaction) -> Result<Txid>;
+}
 
 #[derive(Deserialize, Debug)]
 pub struct NetworkConfig {
+    pub backend: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct BitcoindConfig {
     pub user: String,
     pub password: String,
     pub server: String,
 }
 
-pub struct NetworkRpc {
+pub struct BitcoindRpc {
     client: Client,
 }
 
-impl NetworkRpc {
-    pub fn new(config: &NetworkConfig) -> Result<NetworkRpc> {
+impl BitcoindRpc {
+    pub fn new(config: &BitcoindConfig) -> Result<BitcoindRpc> {
         let client: Client = Client::new(
             &config.server,
             Auth::UserPass(config.user.clone(), config.password.clone()),
         )?;
-        Ok(NetworkRpc{ client })
+        Ok(BitcoindRpc { client })
     }
+}
 
-    pub fn sync(&self, wallet: &mut MyWallet) -> Result<()> {
+impl BackendRpc for BitcoindRpc {
+    fn full_scan(&self, wallet: &mut MyWallet) -> Result<()> {
         let blockchain_info = self.client.get_blockchain_info()?;
         println!(
             "\nConnected to Bitcoin Core RPC.\nChain: {}\nLatest block: {} at height {}\n",
@@ -59,9 +73,11 @@ impl NetworkRpc {
 
         print!("Syncing blocks...");
         while let Some(block) = emitter.next_block()? {
-            wallet
-                .wallet
-                .apply_block_connected_to(&block.block, block.block_height(), block.connected_to())?;
+            wallet.wallet.apply_block_connected_to(
+                &block.block,
+                block.block_height(),
+                block.connected_to(),
+            )?;
         }
         println!("done.");
 
@@ -75,8 +91,46 @@ impl NetworkRpc {
         Ok(())
     }
 
-    pub fn send_rawtx(&self, tx: &Transaction) -> Result<Txid> {
+    fn send_rawtx(&self, tx: &Transaction) -> Result<Txid> {
         let txid = self.client.send_raw_transaction(tx)?;
+        Ok(txid)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ElectrumConfig {
+    pub server: String,
+}
+
+pub struct ElectrumRpc {
+    client: BdkElectrumClient<electrum_client::Client>,
+}
+
+impl ElectrumRpc {
+    const BATCH_SIZE: usize = 5;
+    const GAP_LIMIT: usize = 20;
+
+    pub fn new(config: &ElectrumConfig) -> Result<ElectrumRpc> {
+        let client = electrum_client::Client::new(&config.server)?;
+        let client = BdkElectrumClient::new(client);
+        Ok(ElectrumRpc { client })
+    }
+}
+
+// https://deepwiki.com/search/fullscan-sync_eb8b6154-2c2f-467f-a300-15bb525c492d?mode=fast
+impl BackendRpc for ElectrumRpc {
+    fn full_scan(&self, wallet: &mut MyWallet) -> Result<()> {
+        let req = wallet.wallet.start_full_scan();
+        let update =
+            self.client
+                .full_scan(req, ElectrumRpc::GAP_LIMIT, ElectrumRpc::BATCH_SIZE, true)?;
+        wallet.wallet.apply_update(update)?;
+
+        Ok(())
+    }
+
+    fn send_rawtx(&self, tx: &Transaction) -> Result<Txid> {
+        let txid = self.client.transaction_broadcast(tx)?;
         Ok(txid)
     }
 }

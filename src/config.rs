@@ -6,13 +6,15 @@ use anyhow::Result;
 use serde::Deserialize;
 use toml;
 
-use crate::network::NetworkConfig;
+use crate::network::{BitcoindConfig, ElectrumConfig, NetworkConfig};
 
 const FILENAME: &str = "./wallet.toml";
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    pub bitcoind: NetworkConfig,
+    pub network: NetworkConfig,
+    pub bitcoind: BitcoindConfig,
+    pub electrum: ElectrumConfig,
 }
 
 impl Config {

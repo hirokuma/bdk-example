@@ -1,4 +1,10 @@
+[network]
+backend = "bitcoind"
+
 [bitcoind]
 user = "testuser"
 password = "testpass"
 server = "http://127.0.0.1:18443"
+
+[electrum]
+server = "tcp://127.0.0.1:50001"

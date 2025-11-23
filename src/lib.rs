@@ -13,7 +13,7 @@ use bdk_wallet::{
 use segwit::{v1, wallet::MyWallet};
 
 use crate::config::Config;
-use crate::network::NetworkRpc;
+use crate::network::{BitcoindRpc, ElectrumRpc, BackendRpc};
 
 pub fn cmd_create(_: &Config) -> Result<()> {
     MyWallet::create_wallet()?;
@@ -84,10 +84,16 @@ pub fn cmd_sendtx(
     Ok(())
 }
 
-fn init(config: &Config) -> Result<(MyWallet, NetworkRpc)> {
+fn init(config: &Config) -> Result<(MyWallet, Box<dyn BackendRpc>)> {
     let mut wallet = MyWallet::load_wallet()?;
-    let rpc = NetworkRpc::new(&config.bitcoind)?;
-    rpc.sync(&mut wallet)?;
+    // let rpc = BitcoindRpc::new(&config.bitcoind)?;
+    let rpc: Box<dyn BackendRpc> = match &*config.network.backend {
+        "bitcoind" => Box::new(BitcoindRpc::new(&config.bitcoind)?),
+        "electrum" => Box::new(ElectrumRpc::new(&config.electrum)?),
+        _ => anyhow::bail!("unknown network: {}", config.network.backend),
+    };
+
+    rpc.full_scan(&mut wallet)?;
     Ok((wallet, rpc))
 }
 
