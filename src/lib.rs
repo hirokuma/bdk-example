@@ -93,8 +93,8 @@ pub fn cmd_sendtx(
 pub async fn cmd_stay(config: &Config) -> Result<()> {
     let (wallet, rpc) = init_mutex(config)?;
 
-    tokio::spawn(balance_loop(Arc::clone(&wallet), Arc::clone(&rpc)));
-    tokio::spawn(sync_loop(Arc::clone(&wallet), Arc::clone(&rpc)));
+    tokio::spawn(balance_loop(Arc::clone(&wallet), rpc.clone()));
+    tokio::spawn(sync_loop(Arc::clone(&wallet), rpc.clone()));
     println!("start!");
     infinite_loop().await;
     Ok(())
@@ -139,7 +139,7 @@ fn init(config: &Config) -> Result<(MyWallet, Box<dyn BackendRpc>)> {
     Ok((wallet, rpc))
 }
 
-fn init_mutex(config: &Config) -> Result<(Arc<Mutex<MyWallet>>, Arc<Mutex<dyn BackendRpc>>)> {
+fn init_mutex(config: &Config) -> Result<(Arc<Mutex<MyWallet>>, Arc<Mutex<dyn BackendRpc + Send + Sync>>)> {
     let mut wallet = MyWallet::load_wallet()?;
     let rpc: Arc<Mutex<dyn BackendRpc + Send + Sync>> = match &*config.network.backend {
         "bitcoind" => Arc::new(Mutex::new(BitcoindRpc::new(&config.bitcoind)?)),

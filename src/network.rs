@@ -12,7 +12,6 @@ use bdk_bitcoind_rpc::{
 };
 
 use bdk_wallet::{
-    Balance,
     bitcoin::{Transaction, Txid},
     chain::local_chain::CheckPoint,
 };
@@ -20,7 +19,7 @@ use bdk_wallet::{
 use crate::segwit::wallet::MyWallet;
 use bdk_electrum::{BdkElectrumClient, electrum_client};
 
-pub trait BackendRpc: Send {
+pub trait BackendRpc: Send + Sync {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()>;
     fn sync(&self, wallet: &mut MyWallet) -> Result<()>;
     fn send_rawtx(&self, tx: &Transaction) -> Result<Txid>;
@@ -90,7 +89,7 @@ impl BackendRpc for BitcoindRpc {
         wallet.wallet.apply_unconfirmed_txs(mempool_emissions);
         wallet.persist();
 
-        let balance: Balance = wallet.wallet.balance();
+        // let balance: Balance = wallet.wallet.balance();
         // println!("Wallet balance after syncing: {}", balance.total());
         Ok(())
     }
