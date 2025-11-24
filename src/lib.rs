@@ -4,6 +4,8 @@ pub mod segwit;
 
 use std::{
     str::FromStr, sync::{Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -89,12 +91,25 @@ pub fn cmd_sendtx(
 }
 
 pub async fn cmd_stay(config: &Config) -> Result<()> {
-    let (wallet, rpc) = init(config)?;
-    let wallet = Arc::new(Mutex::new(wallet));
+    let (wallet, rpc) = init_mutex(config)?;
 
-    // sync_loop(wallet, rpc).await;
+    tokio::spawn(balance_loop(Arc::clone(&wallet), Arc::clone(&rpc)));
+    tokio::spawn(sync_loop(Arc::clone(&wallet), Arc::clone(&rpc)));
+    println!("start!");
     infinite_loop().await;
     Ok(())
+}
+
+async fn balance_loop(wallet: Arc<Mutex<MyWallet>>, _rpc: Arc<Mutex<dyn BackendRpc>>) {
+    loop {
+        {
+            let w = wallet.lock().unwrap();
+            let balance = w.wallet.balance().total();
+            println!("balance={}", balance.to_sat());
+
+        }
+        thread::sleep(Duration::from_secs(2));
+    }
 }
 
 async fn sync_loop(wallet: Arc<Mutex<MyWallet>>, rpc: Arc<Mutex<dyn BackendRpc>>) {
@@ -102,8 +117,13 @@ async fn sync_loop(wallet: Arc<Mutex<MyWallet>>, rpc: Arc<Mutex<dyn BackendRpc>>
         {
             let g = rpc.lock().unwrap();
             let mut w = wallet.lock().unwrap();
+
+            let addr = w.wallet.next_unused_address(KeychainKind::External);
             g.sync(&mut w).unwrap();
+            println!("synced!");
+            println!("unused address: {}", addr);
         }
+        thread::sleep(Duration::from_secs(10));
     }
 }
 
@@ -115,10 +135,23 @@ fn init(config: &Config) -> Result<(MyWallet, Box<dyn BackendRpc>)> {
         _ => anyhow::bail!("unknown network: {}", config.network.backend),
     };
 
-    {
-        rpc.full_scan(&mut wallet)?;
-    }
+    rpc.full_scan(&mut wallet)?;
     Ok((wallet, rpc))
+}
+
+fn init_mutex(config: &Config) -> Result<(Arc<Mutex<MyWallet>>, Arc<Mutex<dyn BackendRpc>>)> {
+    let mut wallet = MyWallet::load_wallet()?;
+    let rpc: Arc<Mutex<dyn BackendRpc + Send + Sync>> = match &*config.network.backend {
+        "bitcoind" => Arc::new(Mutex::new(BitcoindRpc::new(&config.bitcoind)?)),
+        "electrum" => Arc::new(Mutex::new(ElectrumRpc::new(&config.electrum)?)),
+        _ => anyhow::bail!("unknown network: {}", config.network.backend),
+    };
+
+    {
+        let lrpc = rpc.lock().unwrap();
+        lrpc.full_scan(&mut wallet)?;
+    }
+    Ok((Arc::new(Mutex::new(wallet)), rpc))
 }
 
 fn receivers_address(addr: &str) -> Address {

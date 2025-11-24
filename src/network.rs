@@ -20,7 +20,7 @@ use bdk_wallet::{
 use crate::segwit::wallet::MyWallet;
 use bdk_electrum::{BdkElectrumClient, electrum_client};
 
-pub trait BackendRpc {
+pub trait BackendRpc: Send {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()>;
     fn sync(&self, wallet: &mut MyWallet) -> Result<()>;
     fn send_rawtx(&self, tx: &Transaction) -> Result<Txid>;
@@ -55,18 +55,18 @@ impl BitcoindRpc {
 // https://github.com/bitcoindevkit/bdk/blob/4fe121e7167cf93a8abf26c87d35b26a682f6cbc/examples/example_bitcoind_rpc_polling/src/main.rs
 impl BackendRpc for BitcoindRpc {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()> {
-        let blockchain_info = self.client.get_blockchain_info()?;
-        println!(
-            "\nConnected to Bitcoin Core RPC.\nChain: {}\nLatest block: {} at height {}\n",
-            blockchain_info.chain, blockchain_info.best_block_hash, blockchain_info.blocks,
-        );
+        // let blockchain_info = self.client.get_blockchain_info()?;
+        // println!(
+        //     "\nConnected to Bitcoin Core RPC.\nChain: {}\nLatest block: {} at height {}\n",
+        //     blockchain_info.chain, blockchain_info.best_block_hash, blockchain_info.blocks,
+        // );
 
         let wallet_tip: CheckPoint = wallet.wallet.latest_checkpoint();
-        println!(
-            "Current wallet tip is: {} at height {}",
-            &wallet_tip.hash(),
-            &wallet_tip.height()
-        );
+        // println!(
+        //     "Current wallet tip is: {} at height {}",
+        //     &wallet_tip.hash(),
+        //     &wallet_tip.height()
+        // );
 
         let mut emitter = Emitter::new(
             &self.client,
@@ -75,7 +75,7 @@ impl BackendRpc for BitcoindRpc {
             NO_EXPECTED_MEMPOOL_TXS,
         );
 
-        print!("Syncing blocks...");
+        // print!("Syncing blocks...");
         while let Some(block) = emitter.next_block()? {
             wallet.wallet.apply_block_connected_to(
                 &block.block,
@@ -83,15 +83,15 @@ impl BackendRpc for BitcoindRpc {
                 block.connected_to(),
             )?;
         }
-        println!("done.");
+        // println!("done.");
 
-        println!("Syncing mempool...");
+        // println!("Syncing mempool...");
         let mempool_emissions: Vec<(Arc<Transaction>, u64)> = emitter.mempool()?.update;
         wallet.wallet.apply_unconfirmed_txs(mempool_emissions);
         wallet.persist();
 
         let balance: Balance = wallet.wallet.balance();
-        println!("Wallet balance after syncing: {}", balance.total());
+        // println!("Wallet balance after syncing: {}", balance.total());
         Ok(())
     }
 
