@@ -2,18 +2,22 @@ pub mod config;
 pub mod network;
 pub mod segwit;
 
-use std::str::FromStr;
+use std::{
+    str::FromStr, sync::{Arc, Mutex},
+};
 
 use anyhow::Result;
-
 use bdk_wallet::{
     KeychainKind,
     bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode},
 };
-use segwit::{v1, wallet::MyWallet};
+use tokio::sync::Notify;
 
-use crate::config::Config;
-use crate::network::{BitcoindRpc, ElectrumRpc, BackendRpc};
+use crate::{
+    config::Config,
+    network::{BitcoindRpc, ElectrumRpc, BackendRpc},
+    segwit::{v1, wallet::MyWallet},
+};
 
 pub fn cmd_create(_: &Config) -> Result<()> {
     MyWallet::create_wallet()?;
@@ -84,16 +88,36 @@ pub fn cmd_sendtx(
     Ok(())
 }
 
+pub async fn cmd_stay(config: &Config) -> Result<()> {
+    let (wallet, rpc) = init(config)?;
+    let wallet = Arc::new(Mutex::new(wallet));
+
+    // sync_loop(wallet, rpc).await;
+    infinite_loop().await;
+    Ok(())
+}
+
+async fn sync_loop(wallet: Arc<Mutex<MyWallet>>, rpc: Arc<Mutex<dyn BackendRpc>>) {
+    loop {
+        {
+            let g = rpc.lock().unwrap();
+            let mut w = wallet.lock().unwrap();
+            g.sync(&mut w).unwrap();
+        }
+    }
+}
+
 fn init(config: &Config) -> Result<(MyWallet, Box<dyn BackendRpc>)> {
     let mut wallet = MyWallet::load_wallet()?;
-    // let rpc = BitcoindRpc::new(&config.bitcoind)?;
     let rpc: Box<dyn BackendRpc> = match &*config.network.backend {
         "bitcoind" => Box::new(BitcoindRpc::new(&config.bitcoind)?),
         "electrum" => Box::new(ElectrumRpc::new(&config.electrum)?),
         _ => anyhow::bail!("unknown network: {}", config.network.backend),
     };
 
-    rpc.full_scan(&mut wallet)?;
+    {
+        rpc.full_scan(&mut wallet)?;
+    }
     Ok((wallet, rpc))
 }
 
@@ -102,4 +126,9 @@ fn receivers_address(addr: &str) -> Address {
         .expect("a valid address")
         .require_network(MyWallet::WALLET_NETWORK)
         .expect("valid address for mainnet")
+}
+
+async fn infinite_loop() {
+    let notify = Arc::new(Notify::new());
+    notify.notified().await;
 }

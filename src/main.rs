@@ -38,9 +38,12 @@ enum Commands {
         /// hex string to sendrawtransaction
         hex: String,
     },
+    /// Stay polling
+    Stay,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let config = Config::new()?;
@@ -59,6 +62,7 @@ fn main() -> Result<()> {
             lib::cmd_spend(&config, &out_addr, amount, fee_rate)?
         },
         Some(Commands::SendTx { hex}) => lib::cmd_sendtx(&config, &hex)?,
+        Some(Commands::Stay) => lib::cmd_stay(&config).await?,
     }
 
     Ok(())

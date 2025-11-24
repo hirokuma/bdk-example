@@ -1,3 +1,5 @@
+// https://deepwiki.com/search/fullscan-sync_eb8b6154-2c2f-467f-a300-15bb525c492d?mode=fast
+
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -20,6 +22,7 @@ use bdk_electrum::{BdkElectrumClient, electrum_client};
 
 pub trait BackendRpc {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()>;
+    fn sync(&self, wallet: &mut MyWallet) -> Result<()>;
     fn send_rawtx(&self, tx: &Transaction) -> Result<Txid>;
 }
 
@@ -49,6 +52,7 @@ impl BitcoindRpc {
     }
 }
 
+// https://github.com/bitcoindevkit/bdk/blob/4fe121e7167cf93a8abf26c87d35b26a682f6cbc/examples/example_bitcoind_rpc_polling/src/main.rs
 impl BackendRpc for BitcoindRpc {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()> {
         let blockchain_info = self.client.get_blockchain_info()?;
@@ -91,6 +95,10 @@ impl BackendRpc for BitcoindRpc {
         Ok(())
     }
 
+    fn sync(&self, wallet: &mut MyWallet) -> Result<()> {
+        self.full_scan(wallet)
+    }
+
     fn send_rawtx(&self, tx: &Transaction) -> Result<Txid> {
         let txid = self.client.send_raw_transaction(tx)?;
         Ok(txid)
@@ -117,13 +125,20 @@ impl ElectrumRpc {
     }
 }
 
-// https://deepwiki.com/search/fullscan-sync_eb8b6154-2c2f-467f-a300-15bb525c492d?mode=fast
 impl BackendRpc for ElectrumRpc {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()> {
         let req = wallet.wallet.start_full_scan();
         let update =
             self.client
                 .full_scan(req, ElectrumRpc::GAP_LIMIT, ElectrumRpc::BATCH_SIZE, true)?;
+        wallet.wallet.apply_update(update)?;
+
+        Ok(())
+    }
+
+    fn sync(&self, wallet: &mut MyWallet) -> Result<()> {
+        let req = wallet.wallet.start_sync_with_revealed_spks();
+        let update = self.client.sync(req, ElectrumRpc::BATCH_SIZE, true)?;
         wallet.wallet.apply_update(update)?;
 
         Ok(())
