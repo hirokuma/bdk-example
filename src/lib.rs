@@ -3,7 +3,8 @@ pub mod network;
 pub mod segwit;
 
 use std::{
-    str::FromStr, sync::{Arc, Mutex},
+    str::FromStr,
+    sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
@@ -11,13 +12,13 @@ use std::{
 use anyhow::Result;
 use bdk_wallet::{
     KeychainKind,
-    bitcoin::{Address, Amount, FeeRate, Transaction, consensus::encode},
+    bitcoin::{Address, Amount, FeeRate, Transaction, consensus},
 };
 use tokio::sync::Notify;
 
 use crate::{
     config::Config,
-    network::{BitcoindRpc, ElectrumRpc, BackendRpc},
+    network::{BackendRpc, BitcoindRpc, ElectrumRpc},
     segwit::{v1, wallet::MyWallet},
 };
 
@@ -30,7 +31,9 @@ pub fn cmd_create(_: &Config) -> Result<()> {
 pub fn cmd_addresses(config: &Config) -> Result<()> {
     let (wallet, _) = init(config)?;
     let index = match wallet.wallet.derivation_index(KeychainKind::External) {
-        None => { return Err(anyhow::anyhow!("No addresses found")); },
+        None => {
+            return Err(anyhow::anyhow!("No addresses found"));
+        }
         Some(index) => index,
     };
     for i in 0..=index {
@@ -49,42 +52,29 @@ pub fn cmd_newaddr(config: &Config) -> Result<()> {
 }
 
 pub fn cmd_tx(_: &Config, tx_hex: &String) -> Result<()> {
-    let tx: Transaction = encode::deserialize_hex(tx_hex)?;
+    let tx: Transaction = consensus::encode::deserialize_hex(tx_hex)?;
     println!("{:#?}", tx);
     Ok(())
 }
 
-pub fn cmd_spend(
-    config: &Config,
-    out_addr: &String,
-    amount: u64,
-    fee_rate: f64,
-) -> Result<()> {
+pub fn cmd_spend(config: &Config, out_addr: &String, amount: u64, fee_rate: f64) -> Result<()> {
     let out_addr = receivers_address(out_addr);
     let out_amount = Amount::from_sat(amount);
     let fee_rate = FeeRate::from_sat_per_kwu((fee_rate * 1000.0 / 4.0) as u64);
 
     let (mut wallet, _) = init(config)?;
-    let tx = v1::segwit_v1(
-        &mut wallet.wallet,
-        out_addr,
-        out_amount,
-        fee_rate,
-    )?;
+    let tx = v1::segwit_v1(&mut wallet.wallet, out_addr, out_amount, fee_rate)?;
 
-    let s: Vec<u8> = encode::serialize(&tx);
+    let s: Vec<u8> = consensus::encode::serialize(&tx);
     let hex_str = s.iter().map(|b| format!("{:02x}", b)).collect::<String>();
     println!("{}", hex_str);
     println!("vsize: {}", tx.vsize());
     Ok(())
 }
 
-pub fn cmd_sendtx(
-    config: &Config,
-    hex: &String,
-) -> Result<()> {
+pub fn cmd_sendtx(config: &Config, hex: &String) -> Result<()> {
     let (_, rpc) = init(config)?;
-    let tx: Transaction = encode::deserialize_hex(hex)?;
+    let tx: Transaction = consensus::encode::deserialize_hex(hex)?;
     let txid = rpc.send_rawtx(&tx)?;
     println!("txid: {}", txid);
     Ok(())
@@ -106,7 +96,6 @@ async fn balance_loop(wallet: Arc<Mutex<MyWallet>>, _rpc: Arc<Mutex<dyn BackendR
             let w = wallet.lock().unwrap();
             let balance = w.wallet.balance().total();
             println!("balance={}", balance.to_sat());
-
         }
         thread::sleep(Duration::from_secs(2));
     }
@@ -139,7 +128,12 @@ fn init(config: &Config) -> Result<(MyWallet, Box<dyn BackendRpc>)> {
     Ok((wallet, rpc))
 }
 
-fn init_mutex(config: &Config) -> Result<(Arc<Mutex<MyWallet>>, Arc<Mutex<dyn BackendRpc + Send + Sync>>)> {
+fn init_mutex(
+    config: &Config,
+) -> Result<(
+    Arc<Mutex<MyWallet>>,
+    Arc<Mutex<dyn BackendRpc + Send + Sync>>,
+)> {
     let mut wallet = MyWallet::load_wallet()?;
     let rpc: Arc<Mutex<dyn BackendRpc + Send + Sync>> = match &*config.network.backend {
         "bitcoind" => Arc::new(Mutex::new(BitcoindRpc::new(&config.bitcoind)?)),

@@ -3,21 +3,18 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-
-use serde::Deserialize;
-
 use bdk_bitcoind_rpc::{
     Emitter, NO_EXPECTED_MEMPOOL_TXS,
     bitcoincore_rpc::{Auth, Client, RpcApi},
 };
-
+use bdk_electrum::{BdkElectrumClient, electrum_client};
 use bdk_wallet::{
     bitcoin::{Transaction, Txid},
     chain::local_chain::CheckPoint,
 };
+use serde::Deserialize;
 
 use crate::segwit::wallet::MyWallet;
-use bdk_electrum::{BdkElectrumClient, electrum_client};
 
 pub trait BackendRpc: Send + Sync {
     fn full_scan(&self, wallet: &mut MyWallet) -> Result<()>;

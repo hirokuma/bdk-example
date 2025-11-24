@@ -1,8 +1,6 @@
-use std::io::prelude::*;
-use std::fs::File;
+use std::{fs::File, io::prelude::*};
 
 use anyhow::Result;
-
 use serde::Deserialize;
 use toml;
 

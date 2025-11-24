@@ -1,7 +1,6 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand, CommandFactory};
-
 use bdk_starter_example::{self as lib, config::Config};
+use clap::{CommandFactory, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -58,10 +57,12 @@ async fn main() -> Result<()> {
         Some(Commands::Addr) => lib::cmd_addresses(&config)?,
         Some(Commands::NewAddr) => lib::cmd_newaddr(&config)?,
         Some(Commands::Tx { hex }) => lib::cmd_tx(&config, &hex)?,
-        Some(Commands::Spend { out_addr, amount, fee_rate }) => {
-            lib::cmd_spend(&config, &out_addr, amount, fee_rate)?
-        },
-        Some(Commands::SendTx { hex}) => lib::cmd_sendtx(&config, &hex)?,
+        Some(Commands::Spend {
+            out_addr,
+            amount,
+            fee_rate,
+        }) => lib::cmd_spend(&config, &out_addr, amount, fee_rate)?,
+        Some(Commands::SendTx { hex }) => lib::cmd_sendtx(&config, &hex)?,
         Some(Commands::Stay) => lib::cmd_stay(&config).await?,
     }
 

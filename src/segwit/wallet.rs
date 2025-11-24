@@ -1,14 +1,13 @@
-use std::io::prelude::*;
-use std::{fs::File, path::Path};
+use std::{fs::File, io::prelude::*, path::Path};
 
 use anyhow::{Context, Result};
-
 use bdk_wallet::{
     KeychainKind, PersistedWallet, Wallet,
     bitcoin::{Network, bip32},
-    miniscript,
     keys::{GeneratableKey, GeneratedKey},
-    rusqlite::Connection, rusqlite::OpenFlags,
+    miniscript,
+    rusqlite::Connection,
+    rusqlite::OpenFlags,
 };
 
 const FILENAME: &str = "./wallet.db";
@@ -34,10 +33,9 @@ impl MyWallet {
         if path.exists() {
             return Err(anyhow::Error::msg("Already wallet exists."));
         } else {
-            let mut conn = Connection::open(FILENAME)
-                .context("Can't open database")?;
-            let xprv: GeneratedKey<_, miniscript::Tap> = bip32::Xpriv::generate(())
-                .context("Fail Xpriv::generate")?;
+            let mut conn = Connection::open(FILENAME).context("Can't open database")?;
+            let xprv: GeneratedKey<_, miniscript::Tap> =
+                bip32::Xpriv::generate(()).context("Fail Xpriv::generate")?;
             let mut xprv = xprv.into_key();
             xprv.network = Self::WALLET_NETWORK.into();
             // let secp = Secp256k1::new();
@@ -51,11 +49,12 @@ impl MyWallet {
                 .network(Self::WALLET_NETWORK)
                 .create_wallet(&mut conn)
                 .context("Fail create_wallet")?;
-            let _ = File::create(path).context("Fail File::create")?.write_all(xprv.to_string().as_bytes());
+            let _ = File::create(path)
+                .context("Fail File::create")?
+                .write_all(xprv.to_string().as_bytes());
             return Ok(MyWallet { wallet, conn });
         }
     }
-
 
     pub fn load_wallet() -> Result<Self> {
         let path = Path::new(XPRV_FILE);
@@ -64,7 +63,8 @@ impl MyWallet {
                 .context("Can't open database")?;
             let mut xprv = String::new();
             let mut f = File::open(XPRV_FILE).context("Fail File::open")?;
-            f.read_to_string(&mut xprv).context("Fail read_to_string from xprv file")?;
+            f.read_to_string(&mut xprv)
+                .context("Fail read_to_string from xprv file")?;
 
             let xprv_extn = format!("tr({}/{}/0/*)", xprv, WALLET_PATH);
             let xprv_intr = format!("tr({}/{}/1/*)", xprv, WALLET_PATH);
@@ -76,7 +76,9 @@ impl MyWallet {
                 .load_wallet(&mut conn)
                 .context("Fail Wallet::load")?;
             let wallet = match wallet_opt {
-                None => { return Err(anyhow::Error::msg("Wallet::load result is None")); },
+                None => {
+                    return Err(anyhow::Error::msg("Wallet::load result is None"));
+                }
                 Some(wallet) => wallet,
             };
             return Ok(MyWallet { wallet, conn });
@@ -97,10 +99,10 @@ mod tests {
     use bdk_wallet::{
         AddressInfo, KeychainKind,
         bitcoin::{
+            Address, Script,
             bip32::{DerivationPath, Xpriv},
             key::{TapTweak, XOnlyPublicKey},
             secp256k1::{PublicKey, Secp256k1},
-            Address, Script,
         },
     };
 

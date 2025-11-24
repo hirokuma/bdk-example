@@ -1,14 +1,12 @@
 use anyhow::Result;
-
 use bdk_wallet::{
-    rusqlite::Connection, PersistedWallet, SignOptions,
-    bitcoin::{
-        Address, Amount, FeeRate, Transaction,
-    },
+    PersistedWallet, SignOptions,
+    bitcoin::{Address, Amount, FeeRate, Transaction},
+    rusqlite::Connection,
 };
 
 pub fn segwit_v1(
-    wallet: &mut PersistedWallet<Connection>, 
+    wallet: &mut PersistedWallet<Connection>,
     // prev_tx: Transaction,
     // prev_index: u32,
     pay_addr: Address,
@@ -23,7 +21,7 @@ pub fn segwit_v1(
         builder.finish()?
     };
     let b = wallet.sign(
-        &mut psbt, 
+        &mut psbt,
         SignOptions {
             trust_witness_utxo: true,
             ..Default::default()
